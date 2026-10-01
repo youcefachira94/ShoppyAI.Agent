@@ -1,0 +1,14 @@
+C:\ShoppyAI\ShoppyAI.Agent\bin\Debug\net10.0\ShoppyAI.Agent.exe
+C:\ShoppyAI\ShoppyAI.Agent\bin\Debug\net10.0\ShoppyAI.Agent.deps.json
+C:\ShoppyAI\ShoppyAI.Agent\bin\Debug\net10.0\ShoppyAI.Agent.runtimeconfig.json
+C:\ShoppyAI\ShoppyAI.Agent\bin\Debug\net10.0\ShoppyAI.Agent.dll
+C:\ShoppyAI\ShoppyAI.Agent\bin\Debug\net10.0\ShoppyAI.Agent.pdb
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.GeneratedMSBuildEditorConfig.editorconfig
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.AssemblyInfoInputs.cache
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.AssemblyInfo.cs
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.csproj.CoreCompileInputs.cache
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.dll
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\refint\ShoppyAI.Agent.dll
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.pdb
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ShoppyAI.Agent.genruntimeconfig.cache
+C:\ShoppyAI\ShoppyAI.Agent\obj\Debug\net10.0\ref\ShoppyAI.Agent.dll
