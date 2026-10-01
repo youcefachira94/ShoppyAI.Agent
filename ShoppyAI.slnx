@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ShoppyAI.Agent.csproj" />
+  <Project Path="ShoppyAI.Desktop/ShoppyAI.Desktop.csproj" />
+</Solution>
