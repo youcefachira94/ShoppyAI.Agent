@@ -38,14 +38,21 @@ while (true)
             RunCommand("git", "log", "--oneline", "-10");
             break;
 
-        case "git commit":
-            Console.Write("Commit message: ");
-            var message = Console.ReadLine();
+       case "git commit":
+    Console.Write("Commit message: ");
+    var message = Console.ReadLine();
 
-            if (!string.IsNullOrWhiteSpace(message))
-                RunCommand("git", "add", ".");
-                RunCommand("git", "commit", "-m", message);
-            break;
+    if (!string.IsNullOrWhiteSpace(message))
+    {
+        RunCommand("git", "add", ".");
+        RunCommand("git", "commit", "-m", message);
+    }
+    else
+    {
+        Console.WriteLine("Commit cancelled: message is empty.");
+    }
+
+    break;
 
         case "git push":
             RunCommand("git", "push");
