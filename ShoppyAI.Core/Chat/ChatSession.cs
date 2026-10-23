@@ -76,9 +76,10 @@ public sealed class ChatSession
             .Select(m => m.Content)
             .TakeLast(UserMessagesForGlossary - 1)
             .Reverse()
-            .Prepend(userText);
+            .Prepend(userText)
+            .ToList();
         var glossary = _resources.Glossary.FindMatches(recentUserTexts);
-        var corrections = _corrections.Active;
+        var corrections = PrioritizeCorrections(_corrections.Active, recentUserTexts);
         var preference = _responseLanguage();
 
         var systemPrompt = _promptBuilder.Build(
@@ -149,6 +150,24 @@ public sealed class ChatSession
         {
             Interlocked.Exchange(ref _busy, 0);
         }
+    }
+
+    /// <summary>
+    /// Corrections for words in the recent messages first, then the most recently changed
+    /// ones, so the relevant ones are sent even when there are more than the prompt allows.
+    /// </summary>
+    private static List<LanguageCorrection> PrioritizeCorrections(
+        IReadOnlyList<LanguageCorrection> corrections, IReadOnlyList<string> recentUserTexts)
+    {
+        var byEntry = corrections.ToDictionary(c => new GlossaryEntry(c.Term, [c.Term], c.Meaning), c => c);
+        var used = new DarijaGlossary(byEntry.Keys)
+            .FindMatches(recentUserTexts, maxEntries: int.MaxValue)
+            .Select(entry => byEntry[entry])
+            .ToList();
+
+        return used
+            .Concat(corrections.Except(used).OrderByDescending(c => c.UpdatedAt))
+            .ToList();
     }
 
     private void EnterBusy()

@@ -68,18 +68,25 @@ public sealed class LanguageCommands
         var command = (space < 0 ? text : text[..space]).ToLowerInvariant();
         var argument = space < 0 ? "" : text[(space + 1)..].Trim();
 
-        return command switch
+        try
         {
-            "/lang" or "/langue" => Language(argument),
-            "/correct" or "/corriger" => Correct(argument),
-            "/corrections" => List(),
-            "/disable" or "/desactiver" => Toggle(argument, false),
-            "/enable" or "/activer" => Toggle(argument, true),
-            "/forget" or "/supprimer" => Forget(argument),
-            "/undo" or "/annuler" => Undo(),
-            "/help-lang" => Help,
-            _ => null
-        };
+            return command switch
+            {
+                "/lang" or "/langue" => Language(argument),
+                "/correct" or "/corriger" => Correct(argument),
+                "/corrections" => List(),
+                "/disable" or "/desactiver" => Toggle(argument, false),
+                "/enable" or "/activer" => Toggle(argument, true),
+                "/forget" or "/supprimer" => Forget(argument),
+                "/undo" or "/annuler" => Undo(),
+                "/help-lang" => Help,
+                _ => null
+            };
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return $"The change could not be saved, nothing was changed ({error.Message}).";
+        }
     }
 
     private string Language(string argument)
@@ -136,11 +143,13 @@ public sealed class LanguageCommands
         if (term.Length == 0)
             return $"Usage: /{(enabled ? "enable" : "disable")} <word>";
 
+        var state = enabled ? "enabled" : "disabled";
         if (_corrections.Find(term) is null)
             return $"No correction for \"{term}\".";
 
-        _corrections.SetEnabled(term, enabled);
-        return $"\"{term}\" {(enabled ? "enabled" : "disabled")}. (/undo to revert)";
+        return _corrections.SetEnabled(term, enabled)
+            ? $"\"{term}\" {state}. (/undo to revert)"
+            : $"\"{term}\" is already {state}.";
     }
 
     private string Forget(string term)

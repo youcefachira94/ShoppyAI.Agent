@@ -1,4 +1,5 @@
 using Markdig;
+using Markdig.Extensions.EmphasisExtras;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -39,7 +40,7 @@ public static class SafeMarkdown
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .DisableHtml()
         .UsePipeTables()
-        .UseEmphasisExtras()
+        .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
         .UseAutoLinks()
         .Build();
 
@@ -74,7 +75,7 @@ public static class SafeMarkdown
         return uri;
     }
 
-    /// <summary>Plain text of inlines, e.g. for accessibility or direction detection.</summary>
+    /// <summary>Plain text of inlines, e.g. for accessibility.</summary>
     public static string ToPlainText(IEnumerable<MdInline> inlines) => string.Concat(inlines.Select(i => i switch
     {
         MdText t => t.Text,
@@ -84,6 +85,23 @@ public static class SafeMarkdown
         MdEmphasis e => ToPlainText(e.Children),
         MdStrikethrough s => ToPlainText(s.Children),
         MdLink l => ToPlainText(l.Children),
+        _ => ""
+    }));
+
+    /// <summary>
+    /// The prose of a paragraph, without inline code or bare addresses, to choose its
+    /// direction: an Arabic sentence with a long command in it stays right-to-left.
+    /// </summary>
+    public static string ToDirectionText(IEnumerable<MdInline> inlines) => string.Concat(inlines.Select(i => i switch
+    {
+        MdText t => t.Text,
+        MdCode => " ",
+        MdLineBreak => "\n",
+        MdStrong s => ToDirectionText(s.Children),
+        MdEmphasis e => ToDirectionText(e.Children),
+        MdStrikethrough s => ToDirectionText(s.Children),
+        MdLink l when ToPlainText(l.Children) == l.RawTarget => " ",
+        MdLink l => ToDirectionText(l.Children),
         _ => ""
     }));
 
@@ -102,7 +120,10 @@ public static class SafeMarkdown
     private static MdBlock? ConvertBlock(MarkdigBlock block, int depth)
     {
         if (depth > MaxDepth)
-            return new MdParagraph([new MdText(RawText(block))]);
+        {
+            var flattened = FlattenBlock(block);
+            return flattened.Length == 0 ? null : new MdParagraph([new MdText(flattened)]);
+        }
 
         switch (block)
         {
@@ -165,8 +186,20 @@ public static class SafeMarkdown
 
         foreach (var inline in container)
         {
-            if (ConvertInline(inline, depth) is { } converted)
+            if (depth > MaxDepth)
+            {
+                inlines.Add(new MdText(FlattenInline(inline)));
+            }
+            else if (inline is DelimiterInline delimiter)
+            {
+                // Unmatched "[", "*"…: keep the character and what follows it.
+                inlines.Add(new MdText(delimiter.ToLiteral()));
+                inlines.AddRange(ConvertInlines(delimiter, depth + 1));
+            }
+            else if (ConvertInline(inline, depth) is { } converted)
+            {
                 inlines.Add(converted);
+            }
         }
 
         return inlines;
@@ -174,9 +207,6 @@ public static class SafeMarkdown
 
     private static MdInline? ConvertInline(MarkdigInline inline, int depth)
     {
-        if (depth > MaxDepth)
-            return new MdText(inline.ToString() ?? "");
-
         switch (inline)
         {
             case LiteralInline literal:
@@ -198,13 +228,19 @@ public static class SafeMarkdown
                 return new MdLink([new MdText(label)], SafeUrl(image.Url), image.Url ?? "");
 
             case LinkInline link:
-                return new MdLink(ConvertInlines(link, depth + 1), SafeUrl(link.Url), link.Url ?? "");
+                // A link inside a link (e.g. a badge image) becomes text: UI frameworks reject nested links.
+                return new MdLink(WithoutLinks(ConvertInlines(link, depth + 1)), SafeUrl(link.Url), link.Url ?? "");
 
             case EmphasisInline emphasis:
                 var children = ConvertInlines(emphasis, depth + 1);
-                return emphasis.DelimiterChar == '~'
-                    ? new MdStrikethrough(children)
-                    : emphasis.DelimiterCount >= 2 ? new MdStrong(children) : new MdEmphasis(children);
+                return emphasis.DelimiterChar switch
+                {
+                    '~' when emphasis.DelimiterCount >= 2 => new MdStrikethrough(children),
+                    '*' or '_' when emphasis.DelimiterCount >= 2 => new MdStrong(children),
+                    '*' or '_' => new MdEmphasis(children),
+                    _ => new MdText(new string(emphasis.DelimiterChar, emphasis.DelimiterCount) + ToPlainText(children) +
+                                    new string(emphasis.DelimiterChar, emphasis.DelimiterCount))
+                };
 
             case HtmlEntityInline entity:
                 return new MdText(entity.Transcoded.ToString());
@@ -217,15 +253,45 @@ public static class SafeMarkdown
                 return nested.Count == 0 ? null : new MdText(ToPlainText(nested));
 
             default:
-                return new MdText(inline.ToString() ?? "");
+                return new MdText(FlattenInline(inline));
         }
     }
+
+    private static List<MdInline> WithoutLinks(IEnumerable<MdInline> inlines) => inlines.Select(i => i switch
+    {
+        MdLink l => new MdText(ToPlainText(l.Children)),
+        MdStrong s => new MdStrong(WithoutLinks(s.Children)),
+        MdEmphasis e => new MdEmphasis(WithoutLinks(e.Children)),
+        MdStrikethrough s => new MdStrikethrough(WithoutLinks(s.Children)),
+        _ => i
+    }).ToList();
+
+    /// <summary>Text of an inline and its children, used past the nesting limit.</summary>
+    private static string FlattenInline(MarkdigInline inline) => inline switch
+    {
+        LiteralInline literal => literal.Content.ToString(),
+        CodeInline code => code.Content,
+        LineBreakInline => " ",
+        AutolinkInline autolink => autolink.Url,
+        HtmlEntityInline entity => entity.Transcoded.ToString(),
+        HtmlInline html => html.Tag,
+        DelimiterInline delimiter => delimiter.ToLiteral() + string.Concat(delimiter.Select(FlattenInline)),
+        ContainerInline container => string.Concat(container.Select(FlattenInline)),
+        _ => ""
+    };
+
+    /// <summary>Text of a block and its children, used past the nesting limit.</summary>
+    private static string FlattenBlock(MarkdigBlock block) => block switch
+    {
+        LeafBlock { Inline: { } inline } => FlattenInline(inline),
+        LeafBlock leaf => CodeText(leaf),
+        ContainerBlock container => string.Join("\n", container.Select(FlattenBlock).Where(t => t.Length > 0)),
+        _ => ""
+    };
 
     private static string CodeText(LeafBlock block)
     {
         var lines = block.Lines.Lines?.Take(block.Lines.Count).Select(l => l.ToString()) ?? [];
         return string.Join("\n", lines).TrimEnd('\n');
     }
-
-    private static string RawText(MarkdigBlock block) => block is LeafBlock leaf ? CodeText(leaf) : "";
 }

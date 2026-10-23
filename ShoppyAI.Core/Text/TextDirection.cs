@@ -3,7 +3,8 @@ namespace ShoppyAI.Core.Text;
 /// <summary>
 /// Chooses the base direction of a paragraph. Chat messages often mix Arabic with
 /// French or English technical words, so the majority script decides; the first
-/// strong character breaks ties (like HTML dir="auto").
+/// strong character breaks ties (like HTML dir="auto"). Code and web addresses are
+/// ignored: they are always left-to-right and would flip short Arabic sentences.
 /// </summary>
 public static class TextDirection
 {
@@ -12,6 +13,7 @@ public static class TextDirection
         if (string.IsNullOrWhiteSpace(text))
             return false;
 
+        text = TextNormalizer.StripCodeAndUrls(text);
         var rtl = 0;
         var ltr = 0;
         bool? firstStrongIsRtl = null;

@@ -26,11 +26,21 @@ public static class MarkdownRenderer
 
     public static UIElement Render(string markdown)
     {
-        var panel = new StackPanel();
-        foreach (var block in SafeMarkdown.Parse(markdown))
-            panel.Children.Add(RenderBlock(block));
+        try
+        {
+            var panel = new StackPanel();
+            foreach (var block in SafeMarkdown.Parse(markdown))
+                panel.Children.Add(RenderBlock(block));
 
-        return panel;
+            return panel;
+        }
+        catch (Exception)
+        {
+            // Whatever the model wrote, the answer stays readable and the app keeps running.
+            var text = new TextBlock { Text = markdown, Foreground = TextBrush, FontSize = 15, TextWrapping = TextWrapping.Wrap };
+            ApplyDirection(text, markdown);
+            return text;
+        }
     }
 
     /// <summary>Right-to-left for mostly Arabic text, left-to-right otherwise.</summary>
@@ -63,13 +73,13 @@ public static class MarkdownRenderer
         };
 
         foreach (var inline in inlines)
-            text.Inlines.Add(RenderInline(inline));
+            text.Inlines.Add(RenderInline(inline, insideLink: false));
 
-        ApplyDirection(text, SafeMarkdown.ToPlainText(inlines));
+        ApplyDirection(text, SafeMarkdown.ToDirectionText(inlines));
         return text;
     }
 
-    private static Inline RenderInline(MdInline inline)
+    private static Inline RenderInline(MdInline inline, bool insideLink)
     {
         switch (inline)
         {
@@ -88,19 +98,23 @@ public static class MarkdownRenderer
                 return new LineBreak();
 
             case MdStrong strong:
-                return Span(new Bold(), strong.Children);
+                return Span(new Bold(), strong.Children, insideLink);
 
             case MdEmphasis emphasis:
-                return Span(new Italic(), emphasis.Children);
+                return Span(new Italic(), emphasis.Children, insideLink);
 
             case MdStrikethrough strike:
-                var struck = Span(new Span(), strike.Children);
+                var struck = Span(new Span(), strike.Children, insideLink);
                 struck.TextDecorations = TextDecorations.Strikethrough;
                 return struck;
 
+            case MdLink link when insideLink:
+                // WPF does not allow a Hyperlink inside a Hyperlink.
+                return new Run(SafeMarkdown.ToPlainText(link.Children));
+
             case MdLink { Url: { } url } link:
-                var hyperlink = Span(new Hyperlink { Foreground = LinkBrush, ToolTip = url.AbsoluteUri }, link.Children);
-                ((Hyperlink)hyperlink).Click += (_, _) => OpenLink(url);
+                var hyperlink = (Hyperlink)Span(new Hyperlink { Foreground = LinkBrush, ToolTip = url.AbsoluteUri }, link.Children, insideLink: true);
+                hyperlink.Click += (_, _) => OpenLink(url);
                 return hyperlink;
 
             case MdLink link:
@@ -114,10 +128,10 @@ public static class MarkdownRenderer
         }
     }
 
-    private static Span Span(Span span, IReadOnlyList<MdInline> children)
+    private static Span Span(Span span, IReadOnlyList<MdInline> children, bool insideLink)
     {
         foreach (var child in children)
-            span.Inlines.Add(RenderInline(child));
+            span.Inlines.Add(RenderInline(child, insideLink));
 
         return span;
     }
@@ -185,7 +199,7 @@ public static class MarkdownRenderer
             grid.Children.Add(item);
         }
 
-        ApplyDirection(grid, string.Concat(list.Items.SelectMany(b => b).OfType<MdParagraph>().Select(p => SafeMarkdown.ToPlainText(p.Inlines))));
+        ApplyDirection(grid, string.Concat(list.Items.SelectMany(b => b).OfType<MdParagraph>().Select(p => SafeMarkdown.ToDirectionText(p.Inlines))));
         return grid;
     }
 
@@ -232,12 +246,14 @@ public static class MarkdownRenderer
             }
         }
 
-        return new ScrollViewer
+        var scroller = new ScrollViewer
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Content = grid
         };
+        scroller.PreviewMouseWheel += ForwardMouseWheel;
+        return scroller;
     }
 
     private static void OpenLink(Uri url)
@@ -248,8 +264,17 @@ public static class MarkdownRenderer
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
-        if (answer == MessageBoxResult.Yes)
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
             Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            MessageBox.Show($"The address could not be opened: {error.Message}", "ShoppyAI", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static void ForwardMouseWheel(object sender, MouseWheelEventArgs e)

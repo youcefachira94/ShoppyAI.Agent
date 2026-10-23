@@ -5,21 +5,29 @@ using ShoppyAI.Core.Language;
 using ShoppyAI.Core.Ollama;
 using ShoppyAI.Core.Settings;
 
+// Arabic needs Unicode in the console. On a Windows console, UTF-16 makes .NET use the
+// wide console API (ReadConsoleW/WriteConsoleW), which also keeps French accents working;
+// redirected streams and other systems use UTF-8.
 try
 {
-    Console.InputEncoding = Encoding.UTF8;
-    Console.OutputEncoding = Encoding.UTF8;
+    if (OperatingSystem.IsWindows() && !Console.IsInputRedirected)
+        Console.InputEncoding = Encoding.Unicode;
+
+    Console.OutputEncoding = OperatingSystem.IsWindows() && !Console.IsOutputRedirected
+        ? Encoding.Unicode
+        : Encoding.UTF8;
 }
 catch (IOException)
 {
-    // No console attached (redirected input/output): keep the defaults.
+    // No console attached: keep the defaults.
 }
 
 var settings = new SettingsStore();
 var corrections = new CorrectionStore(ShoppyPaths.CorrectionsFile);
+var languageResources = LanguageResources.Load(ShoppyPaths.LanguageDirectory);
 var session = new ChatSession(
     new OllamaChatClient(OllamaChatClient.CreateHttpClient(), settings.EffectiveOllamaOptions()),
-    LanguageResources.Load(ShoppyPaths.LanguageDirectory),
+    languageResources,
     corrections,
     () => settings.Settings.ResponseLanguage);
 var languageCommands = new LanguageCommands(corrections, () => settings.Settings.ResponseLanguage, language =>
@@ -37,6 +45,12 @@ var languageCommands = new LanguageCommands(corrections, () => settings.Settings
 
 Console.WriteLine("ShoppyAI Agent");
 Console.WriteLine("Type 'help' for commands or 'exit' to quit.");
+
+foreach (var problem in new[] { settings.LoadError, corrections.LoadError, languageResources.UserGlossaryError })
+{
+    if (problem is not null)
+        Console.WriteLine($"Warning: {problem}");
+}
 
 while (true)
 {
