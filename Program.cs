@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Net.Http.Json;
+using System.Diagnostics;
 
 Console.WriteLine("ShoppyAI Agent");
 Console.WriteLine("Type 'help' for commands or 'exit' to quit.");
@@ -58,6 +59,15 @@ while (true)
         case "files":
             ScanProject();
             break;
+case "ask":
+    Console.Write("Your question: ");
+    var question = Console.ReadLine();
+
+    if (!string.IsNullOrWhiteSpace(question))
+        await AskOllama(question);
+
+    break;
+
 
         default:
             if (input.StartsWith("read ", StringComparison.OrdinalIgnoreCase))
@@ -81,6 +91,7 @@ static void ShowHelp()
     Console.WriteLine("  scan");
     Console.WriteLine("  files");
     Console.WriteLine("  read <file>");
+    Console.WriteLine("  ask");
     Console.WriteLine("  git status");
     Console.WriteLine("  git diff");
     Console.WriteLine("  git log");
@@ -155,8 +166,49 @@ static void RunCommand(string fileName, params string[] arguments)
 
         process.WaitForExit();
     }
-    catch (Exception error)
+        catch (Exception error)
     {
         Console.WriteLine($"Error: {error.Message}");
     }
 }
+
+static async Task AskOllama(string question)
+{
+    try
+    {
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(5)
+        };
+
+        var request = new
+        {
+            model = "qwen2.5-coder:14b",
+            prompt = question,
+            stream = false
+        };
+
+        using var response = await client.PostAsJsonAsync(
+            "http://localhost:11434/api/generate",
+            request
+        );
+
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<
+    OllamaResponse>();
+
+        Console.WriteLine(
+            result?.Response ?? "No response received."
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Ollama error: {ex.Message}");
+    }
+}
+
+public record OllamaResponse(
+    [property: System.Text.Json.Serialization.JsonPropertyName("response")]
+    string Response
+);
