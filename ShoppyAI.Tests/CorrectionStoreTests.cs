@@ -105,9 +105,9 @@ public class CorrectionStoreTests
 public class LanguageCommandsTests
 {
     private readonly CorrectionStore _store = new(null);
-    private ResponseLanguage _language = ResponseLanguage.Auto;
+    private readonly LanguagePreferences _preferences = new(store: null);
 
-    private LanguageCommands Commands => new(_store, () => _language, l => _language = l);
+    private LanguageCommands Commands => new(_store, _preferences);
 
     [Fact]
     public void Correct_list_disable_undo_forget()
@@ -136,15 +136,19 @@ public class LanguageCommandsTests
     }
 
     [Theory]
-    [InlineData("/lang fr", ResponseLanguage.French)]
-    [InlineData("/lang darija", ResponseLanguage.DarijaLatin)]
-    [InlineData("/lang darija-ar", ResponseLanguage.DarijaArabic)]
-    [InlineData("/langue auto", ResponseLanguage.Auto)]
-    public void Sets_the_reply_language(string command, ResponseLanguage expected)
+    [InlineData("/lang fr", ReplyLanguage.French, ReplyScript.Latin)]
+    [InlineData("/lang darija", ReplyLanguage.Darija, ReplyScript.Latin)]
+    [InlineData("/lang darija-ar", ReplyLanguage.Darija, ReplyScript.Arabic)]
+    [InlineData("/lang darija-latin", ReplyLanguage.Darija, ReplyScript.Latin)]
+    [InlineData("/langue auto", null, null)]
+    public void Saves_the_reply_language_and_keeps_the_alphabet_separate(string command, ReplyLanguage? language, ReplyScript? script)
     {
-        _language = ResponseLanguage.English;
+        _preferences.Apply(new ReplyPreference(ReplyLanguage.English, ReplyScript.Latin));
+
         Commands.TryExecute(command);
-        Assert.Equal(expected, _language);
+
+        Assert.Equal(language, _preferences.Saved.Language);
+        Assert.Equal(script, _preferences.Saved.Script);
     }
 
     [Theory]

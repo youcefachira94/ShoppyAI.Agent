@@ -31,12 +31,49 @@ Pour enrichir le glossaire **sans recompiler**, créez `%LOCALAPPDATA%\ShoppyAI\
 { "entries": [ { "term": "barbech", "forms": ["barbech", "barbecht", "برباش"], "meaning": "fouiller, chercher partout" } ] }
 ```
 
-## Langue de réponse
+## Langue de réponse (conversation multilingue, V1.1)
 
-- **Auto** (par défaut) : même langue et même écriture que l'utilisateur. Un message court ou ambigu (« ok », « w la base de données ? ») garde la langue de la conversation.
-- **Langue imposée** : Darija latin, Darija arabe, français, anglais ou arabe standard.
+Le mode **Auto** est le mode principal : l'utilisateur n'a rien à sélectionner. La langue du message ne s'impose pas automatiquement à la réponse : ShoppyAI garde la langue de la conversation et les préférences exprimées.
 
-Le choix se fait dans la barre latérale (*Reply language*) ou avec `/lang auto|darija|darija-ar|fr|en|ar`. Il est enregistré dans `%LOCALAPPDATA%\ShoppyAI\settings.json`.
+Pour chaque message, `ShoppyAI.Core` (`ConversationLanguage`) distingue :
+
+- **la langue détectée** du message (simple indice) ;
+- **la langue de réponse préférée** et **l'alphabet préféré** pour la darija (arabe ou latin), qui sont deux réglages séparés ;
+- **les consignes explicites** trouvées dans le message (`LanguageInstructionParser`, indices dans `Language/Data/reply-cues.json`).
+
+Ordre de priorité :
+
+1. **Consigne pour cette réponse seulement** : « juste cette fois en anglais ».
+2. **Consigne pour la conversation** : « réponds en français », « jawbni b darija », « machi b lfusha, b darija », « plus court stp ».
+3. **Préférence enregistrée** : demandée avec « من اليوم », « désormais », « toujours », « from now on », « dima »…, ou choisie dans la barre latérale ou avec `/lang`.
+4. **Langue de la conversation** :
+   - un message isolé dans une autre langue (une question technique en anglais) ne la change pas ;
+   - un message court ou flou (« oui », « vasy », « saha », « ok ») non plus ;
+   - deux messages clairs d'affilée dans une autre langue la changent : l'utilisateur peut toujours changer de langue naturellement.
+5. **Début de conversation** : la langue du premier message.
+
+Quelques précisions :
+
+- « بالعربية » / « en arabe » donne de la darija en lettres arabes ; l'arabe standard n'est utilisé que si l'utilisateur dit « الفصحى » ou « fusha ».
+- « بالحروف العربية » / « ekteb b arabizi » change l'alphabet, et la langue reste la darija.
+- « réponds dans ma langue » revient au mode Auto.
+- Une demande de traduction (« traduis… », « comment on dit… en anglais ») n'est pas une consigne de langue.
+- Si le parseur rate une demande, le modèle a pour consigne de suivre une demande explicite du dernier message.
+- Le code, les commandes et les identifiants gardent leur écriture d'origine.
+
+**Réglages et commandes** (application et console) :
+
+- **Barre latérale :** *Reply language* (Auto, Darija, Français, English, العربية الفصحى), *Darija alphabet* (Auto, العربية, Latin), *Remember for new chats*, *Reset preferences*. La ligne « This chat » affiche les consignes données dans la conversation en cours.
+- **Préférences générales :**
+  - `/prefs` (afficher) et `/prefs reset` (tout remettre en Auto) ;
+  - `/remember on|off`.
+- **Langue, alphabet, longueur :**
+  - `/lang auto|darija|darija-ar|darija-latin|fr|en|ar` ;
+  - `/alphabet auto|arabic|latin` ;
+  - `/length auto|short|detailed`.
+- **Notes de style :** `/style <note>`, `/style`, `/style clear`.
+
+Les préférences sont enregistrées dans `%LOCALAPPDATA%\ShoppyAI\settings.json` (section `preferences`) quand *Remember* est activé. Sinon, elles durent jusqu'à la fermeture de ShoppyAI. L'ancien réglage V1 `responseLanguage` est migré automatiquement. La console et l'application relisent le fichier quand l'autre l'a modifié.
 
 ## Corrections linguistiques
 
@@ -60,7 +97,9 @@ Les variables d'environnement `SHOPPYAI_OLLAMA_URL` et `SHOPPYAI_MODEL` les remp
 
 ## Évaluation avec le vrai modèle
 
-`ShoppyAI.DarijaEval/darija-eval-dataset.json` contient 70 cas : 20 en darija arabe, 20 en arabizi, 10 mixtes, 10 conversations avec contexte ou corrections, 10 expressions ambiguës ou dialectales.
+`ShoppyAI.DarijaEval/darija-eval-dataset.json` contient 80 cas (115 tours) : 20 en darija arabe, 20 en arabizi, 10 mixtes, 10 conversations avec contexte ou corrections, 10 expressions ambiguës ou dialectales, et 10 cas « preferences » (changements de langue, préférences durables, messages courts, corrections). Le cas pf-01 est le scénario de référence : « wach rak ? », puis « جاوبني بالحروف العربية من الآن », puis « what can you do for me? ».
+
+Le `--dry-run` remplace le modèle par une réponse fixe. Il vérifie donc sans GPU la langue de réponse demandée à chaque tour (contrôles `reply-language` et `answer-length`).
 
 ```powershell
 ollama list                                   # qwen2.5-coder:14b doit être présent

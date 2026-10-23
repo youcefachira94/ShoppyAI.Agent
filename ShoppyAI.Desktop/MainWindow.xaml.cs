@@ -15,18 +15,25 @@ public partial class MainWindow : Window
     private readonly SettingsStore _settings = new();
     private readonly CorrectionStore _corrections = new(ShoppyPaths.CorrectionsFile);
     private readonly LanguageResources _language = LanguageResources.Load(ShoppyPaths.LanguageDirectory);
+    private readonly LanguagePreferences _preferences;
     private readonly ChatSession _session;
     private readonly LanguageCommands _commands;
     private CancellationTokenSource? _reply;
+
+    /// <summary>True while the sidebar is being updated from the preferences, so its events are ignored.</summary>
+    private bool _showingPreferences;
 
     public MainWindow()
     {
         InitializeComponent();
 
         var client = new OllamaChatClient(OllamaChatClient.CreateHttpClient(), _settings.EffectiveOllamaOptions());
-        _session = new ChatSession(client, _language, _corrections, () => _settings.Settings.ResponseLanguage);
-        _commands = new LanguageCommands(_corrections, () => _settings.Settings.ResponseLanguage, SetResponseLanguage);
-        SelectReplyLanguage(_settings.Settings.ResponseLanguage);
+        _preferences = new LanguagePreferences(_settings);
+        _session = new ChatSession(client, _language, _corrections, _preferences);
+        _commands = new LanguageCommands(_corrections, _preferences, _session);
+        _preferences.Changed += (_, _) => ShowPreferences();
+        _session.LanguageChanged += (_, _) => ShowPreferences();
+        ShowPreferences();
 
         AddMessage(
             "ShoppyAI",
@@ -90,6 +97,11 @@ public partial class MainWindow : Window
                 AddMessage("ShoppyAI", "The model returned an empty answer. Please try again.");
             else
                 bubble.Content = MarkdownRenderer.Render(answer.ToString());
+
+            if (_session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent } instruction)
+                AddNote($"Saved reply preference: {ReplyPreferenceNames.Describe(instruction.Preference)}. You can change it in the sidebar.");
+            if (_session.PreferenceSaveError is { } saveError)
+                AddNote($"The preference was used but could not be saved ({saveError}).");
         }
         catch (OperationCanceledException) when (reply.IsCancellationRequested)
         {
@@ -134,8 +146,29 @@ public partial class MainWindow : Window
 
     private void ReplyLanguage_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton { Tag: string tag } && Enum.TryParse<ResponseLanguage>(tag, out var language))
-            SetResponseLanguage(language);
+        if (!_showingPreferences && sender is RadioButton { Tag: string tag } && Enum.TryParse<ReplyLanguage>(tag, out var language))
+            SavePreference(new ReplyPreference(Language: language));
+    }
+
+    private void ReplyScript_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_showingPreferences && sender is RadioButton { Tag: string tag } && Enum.TryParse<ReplyScript>(tag, out var script))
+            SavePreference(new ReplyPreference(Script: script));
+    }
+
+    private void RememberPreferences_Click(object sender, RoutedEventArgs e)
+    {
+        RunPreferenceChange(() => _preferences.SetRemember(RememberPreferencesBox.IsChecked == true));
+    }
+
+    private void ResetPreferences_Click(object sender, RoutedEventArgs e)
+    {
+        RunPreferenceChange(() =>
+        {
+            _preferences.Reset();
+            _session.ResetConversationRequests();
+            AddNote("Preferences reset: replies follow your language again.");
+        });
     }
 
     private void LanguageCorrections_Click(object sender, RoutedEventArgs e)
@@ -148,31 +181,71 @@ public partial class MainWindow : Window
         MarkdownRenderer.ApplyDirection(MessageBox, MessageBox.Text);
     }
 
-    private void SetResponseLanguage(ResponseLanguage language)
+    /// <summary>A choice in the sidebar is saved and applies from the next answer of this chat.</summary>
+    private void SavePreference(ReplyPreference preference)
     {
-        SelectReplyLanguage(language);
+        RunPreferenceChange(() =>
+        {
+            _preferences.Apply(preference);
+            _session.ResetConversationRequests(preference);
+        });
+    }
 
-        if (_settings.Settings.ResponseLanguage == language)
-            return;
-
-        _settings.Settings.ResponseLanguage = language;
+    private void RunPreferenceChange(Action change)
+    {
         try
         {
-            _settings.Save();
+            change();
         }
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException)
         {
-            AddMessage("ShoppyAI", $"Warning: the language choice could not be saved ({error.Message}).");
+            AddNote($"The preference could not be saved ({error.Message}).");
+            ShowPreferences();
         }
     }
 
-    private void SelectReplyLanguage(ResponseLanguage language)
+    /// <summary>Shows the saved preferences and this chat's requests in the sidebar.</summary>
+    private void ShowPreferences()
     {
-        foreach (var radio in ReplyLanguagePanel.Children.OfType<RadioButton>())
+        _showingPreferences = true;
+        try
         {
-            if (radio.Tag as string == language.ToString())
-                radio.IsChecked = true;
+            var saved = _preferences.Saved;
+            Select(ReplyLanguagePanel, (saved.Language ?? ReplyLanguage.Auto).ToString());
+            Select(ReplyScriptPanel, (saved.Script ?? ReplyScript.Auto).ToString());
+            RememberPreferencesBox.IsChecked = _preferences.Remember;
+
+            var requests = _session.ConversationRequests;
+            ConversationPreferenceText.Text = $"This chat: {ReplyPreferenceNames.Describe(requests)} (asked in the conversation)";
+            ConversationPreferenceText.Visibility = requests.IsEmpty ? Visibility.Collapsed : Visibility.Visible;
         }
+        finally
+        {
+            _showingPreferences = false;
+        }
+    }
+
+    private static void Select(Panel panel, string tag)
+    {
+        foreach (var radio in panel.Children.OfType<RadioButton>())
+            radio.IsChecked = radio.Tag as string == tag;
+    }
+
+    /// <summary>A small grey line under the conversation, not part of it.</summary>
+    private void AddNote(string text)
+    {
+        var note = new TextBlock
+        {
+            Text = text,
+            Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#94A3B8")!,
+            FontSize = 12,
+            FontStyle = FontStyles.Italic,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, -8, 0, 18)
+        };
+        MarkdownRenderer.ApplyDirection(note, text);
+        MessagesPanel.Children.Add(note);
+        ScrollToEnd();
     }
 
     private void AddMessage(string author, string message)

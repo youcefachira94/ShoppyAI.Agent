@@ -25,23 +25,13 @@ catch (IOException)
 var settings = new SettingsStore();
 var corrections = new CorrectionStore(ShoppyPaths.CorrectionsFile);
 var languageResources = LanguageResources.Load(ShoppyPaths.LanguageDirectory);
+var preferences = new LanguagePreferences(settings);
 var session = new ChatSession(
     new OllamaChatClient(OllamaChatClient.CreateHttpClient(), settings.EffectiveOllamaOptions()),
     languageResources,
     corrections,
-    () => settings.Settings.ResponseLanguage);
-var languageCommands = new LanguageCommands(corrections, () => settings.Settings.ResponseLanguage, language =>
-{
-    settings.Settings.ResponseLanguage = language;
-    try
-    {
-        settings.Save();
-    }
-    catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-    {
-        Console.WriteLine($"Warning: the language choice could not be saved ({error.Message}).");
-    }
-});
+    preferences);
+var languageCommands = new LanguageCommands(corrections, preferences, session);
 
 Console.WriteLine("ShoppyAI Agent");
 Console.WriteLine("Type 'help' for commands or 'exit' to quit.");
@@ -244,6 +234,11 @@ static async Task AskOllama(ChatSession session, string question)
             Console.Write(delta);
 
         Console.WriteLine();
+
+        if (session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent } instruction)
+            Console.WriteLine($"(Saved reply preference: {ReplyPreferenceNames.Describe(instruction.Preference)}. Change it with /prefs.)");
+        if (session.PreferenceSaveError is { } saveError)
+            Console.WriteLine($"Warning: the preference was used but could not be saved ({saveError}).");
     }
     catch (Exception ex)
     {

@@ -18,26 +18,62 @@ public static class ShoppyPaths
     public static string CorrectionsFile => Path.Combine(LanguageDirectory, "corrections.json");
 }
 
+/// <summary>Saved reply preferences. Null means "follow the conversation" (Auto).</summary>
+public sealed class PreferenceSettings
+{
+    /// <summary>Keep the preferences for new conversations and after a restart.</summary>
+    public bool Remember { get; set; } = true;
+
+    public ReplyLanguage? Language { get; set; }
+    public ReplyScript? Script { get; set; }
+    public AnswerLength? AnswerLength { get; set; }
+    public List<string> StyleNotes { get; set; } = [];
+}
+
 public sealed class ShoppySettings
 {
-    [JsonConverter(typeof(JsonStringEnumConverter<ResponseLanguage>))]
-    public ResponseLanguage ResponseLanguage { get; set; } = ResponseLanguage.Auto;
+    /// <summary>Version 1 setting (Auto, DarijaLatin, DarijaArabic…), migrated to <see cref="Preferences"/>.</summary>
+    [JsonPropertyName("responseLanguage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacyResponseLanguage { get; set; }
+
+    public PreferenceSettings Preferences { get; set; } = new();
 
     public OllamaOptions Ollama { get; set; } = new();
 }
 
-/// <summary>Loads and saves settings.json.</summary>
+/// <summary>
+/// Loads and saves settings.json. The file is re-read when another ShoppyAI process
+/// (console or desktop) changed it, so one does not overwrite the other's preferences.
+/// </summary>
 public sealed class SettingsStore
 {
     private readonly string _filePath;
+    private readonly Lock _gate = new();
+    private ShoppySettings _settings;
+    private DateTime _loadedWriteTime;
 
     public SettingsStore(string? filePath = null)
     {
         _filePath = filePath ?? ShoppyPaths.SettingsFile;
-        Settings = Load();
+        _settings = Load();
     }
 
-    public ShoppySettings Settings { get; }
+    /// <summary>Current settings, re-read if the file changed since the last access.</summary>
+    public ShoppySettings Settings
+    {
+        get
+        {
+            lock (_gate)
+            {
+                RefreshIfChanged();
+                return _settings;
+            }
+        }
+    }
+
+    /// <summary>Set when settings.json could not be read; defaults are used instead.</summary>
+    public string? LoadError { get; private set; }
 
     /// <summary>Ollama options to use: the saved ones, with SHOPPYAI_OLLAMA_URL / SHOPPYAI_MODEL applied.</summary>
     public OllamaOptions EffectiveOllamaOptions()
@@ -55,15 +91,44 @@ public sealed class SettingsStore
         };
     }
 
-    /// <summary>Set when settings.json could not be read; defaults are used instead.</summary>
-    public string? LoadError { get; private set; }
+    /// <summary>Applies a change to the latest settings and saves them. On a write error nothing is changed.</summary>
+    /// <exception cref="IOException">The file could not be written.</exception>
+    public void Update(Action<ShoppySettings> change)
+    {
+        lock (_gate)
+        {
+            RefreshIfChanged();
+            var before = JsonSerializer.Serialize(_settings, JsonOptions);
+            change(_settings);
+
+            try
+            {
+                Save();
+            }
+            catch
+            {
+                _settings = JsonSerializer.Deserialize<ShoppySettings>(before, JsonOptions)!;
+                throw;
+            }
+        }
+    }
 
     public void Save()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-        var temporary = _filePath + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(Settings, JsonOptions));
-        File.Move(temporary, _filePath, overwrite: true);
+        lock (_gate)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+            var temporary = _filePath + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(_settings, JsonOptions));
+            File.Move(temporary, _filePath, overwrite: true);
+            _loadedWriteTime = File.GetLastWriteTimeUtc(_filePath);
+        }
+    }
+
+    private void RefreshIfChanged()
+    {
+        if (LoadError is null && File.Exists(_filePath) && File.GetLastWriteTimeUtc(_filePath) != _loadedWriteTime)
+            _settings = Load();
     }
 
     private ShoppySettings Load()
@@ -74,22 +139,50 @@ public sealed class SettingsStore
         {
             try
             {
+                _loadedWriteTime = File.GetLastWriteTimeUtc(_filePath);
                 settings = JsonSerializer.Deserialize<ShoppySettings>(File.ReadAllText(_filePath), JsonOptions) ?? settings;
             }
-            catch (Exception error) when (error is JsonException or IOException)
+            catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
             {
                 LoadError = error.Message;
             }
         }
 
         settings.Ollama ??= new OllamaOptions();
+        settings.Preferences ??= new PreferenceSettings();
+        settings.Preferences.StyleNotes ??= [];
+        MigrateVersion1(settings);
         return settings;
+    }
+
+    private static void MigrateVersion1(ShoppySettings settings)
+    {
+        if (settings.LegacyResponseLanguage is not { } legacy)
+            return;
+
+        var preferences = settings.Preferences;
+        if (preferences.Language is null && preferences.Script is null)
+        {
+            (preferences.Language, preferences.Script) = legacy switch
+            {
+                "DarijaLatin" => (ReplyLanguage.Darija, ReplyScript.Latin),
+                "DarijaArabic" => (ReplyLanguage.Darija, ReplyScript.Arabic),
+                "French" => (ReplyLanguage.French, (ReplyScript?)null),
+                "English" => (ReplyLanguage.English, null),
+                "StandardArabic" => (ReplyLanguage.StandardArabic, null),
+                _ => ((ReplyLanguage?)null, (ReplyScript?)null)
+            };
+        }
+
+        settings.LegacyResponseLanguage = null;
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() },
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 }

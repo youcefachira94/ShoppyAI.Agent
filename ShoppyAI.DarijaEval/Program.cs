@@ -46,7 +46,9 @@ var cases = dataset.Cases
     .Where(c => !arguments.TryGetValue("category", out var category) || c.Category == category)
     .ToList();
 
-using var http = OllamaChatClient.CreateHttpClient();
+// The dry run answers every turn with a fixed text instead of a model, so conversations,
+// requests and saved preferences go through exactly the same steps as a real run.
+using var http = dryRun ? new HttpClient(new CannedAnswerHandler()) : OllamaChatClient.CreateHttpClient();
 http.Timeout = TimeSpan.FromMinutes(30);
 
 if (!dryRun && await CheckModel(http, options) is { } problem)
@@ -68,11 +70,16 @@ foreach (var evalCase in cases)
 {
     // Every case starts from an empty conversation and an empty, in-memory correction list.
     var corrections = new CorrectionStore(null);
-    var session = new ChatSession(client, resources, corrections, () => evalCase.ResponseLanguage);
+    var preferences = new LanguagePreferences(store: null);
+    preferences.Apply(evalCase.SavedPreference);
+    var session = new ChatSession(client, resources, corrections, preferences);
 
     for (var turnIndex = 0; turnIndex < evalCase.Turns.Count; turnIndex++)
     {
         var turn = evalCase.Turns[turnIndex];
+        if (turn.NewConversation)
+            session.Reset();
+
         foreach (var correction in turn.CorrectionsBefore ?? [])
             corrections.AddOrUpdate(correction.Term, correction.Meaning, correction.Note);
 
@@ -82,11 +89,12 @@ foreach (var evalCase in cases)
 
         if (dryRun)
         {
-            var prepared = session.Prepare(turn.User);
             if (arguments.ContainsKey("show-prompt"))
-                Console.WriteLine($"\n----- system prompt -----\n{prepared.SystemPrompt}\n-------------------------");
+                Console.WriteLine($"\n----- system prompt -----\n{session.Prepare(turn.User).SystemPrompt}\n-------------------------");
+
+            var prepared = (await session.ReplyAsync(turn.User)).Request;
             result = new TurnResult(evalCase, turnIndex, turn, prepared.Detection, prepared.GlossaryMatches.Select(g => g.Term).ToList(),
-                prepared.SystemPrompt.Length, "", null, [], null, TimeSpan.Zero);
+                prepared.SystemPrompt.Length, "", null, EvalChecks.Decision(turn.Expect, prepared.Reply), null, TimeSpan.Zero, prepared.Reply);
         }
         else
         {
@@ -94,9 +102,11 @@ foreach (var evalCase in cases)
             {
                 var reply = await session.ReplyAsync(turn.User);
                 var replyDetection = detector.Detect(reply.Content);
+                var checks = EvalChecks.Run(turn.Expect, reply.Content, replyDetection);
+                checks.InsertRange(0, EvalChecks.Decision(turn.Expect, reply.Request.Reply));
                 result = new TurnResult(evalCase, turnIndex, turn, reply.Request.Detection,
                     reply.Request.GlossaryMatches.Select(g => g.Term).ToList(), reply.Request.SystemPrompt.Length,
-                    reply.Content, replyDetection, EvalChecks.Run(turn.Expect, reply.Content, replyDetection), reply.Metrics, watch.Elapsed);
+                    reply.Content, replyDetection, checks, reply.Metrics, watch.Elapsed, reply.Request.Reply);
             }
             catch (Exception error) when (error is OllamaException or HttpRequestException or IOException or TaskCanceledException)
             {
@@ -107,7 +117,8 @@ foreach (var evalCase in cases)
 
         results.Add(result);
         Console.WriteLine(dryRun
-            ? $"{result.InputDetection.Language}/{result.InputDetection.Script}, glossary: {string.Join(", ", result.Glossary)}, prompt {result.SystemPromptChars} chars"
+            ? $"{result.InputDetection.Language}/{result.InputDetection.Script} -> reply {result.Decision?.Describe()} ({result.Decision?.Source}) " +
+              $"{string.Concat(result.Checks.Select(c => c.Passed ? "+" : "-"))}, glossary: {string.Join(", ", result.Glossary)}, prompt {result.SystemPromptChars} chars"
             : $"{watch.Elapsed.TotalSeconds:0.0}s {string.Concat(result.Checks.Select(c => c.Passed ? "+" : "-"))}");
     }
 }
@@ -167,7 +178,8 @@ public sealed record TurnResult(
     LanguageDetection? ReplyDetection,
     IReadOnlyList<CheckResult> Checks,
     OllamaMetrics? Metrics,
-    TimeSpan Elapsed)
+    TimeSpan Elapsed,
+    ReplyDecision? Decision = null)
 {
     public object ToJson() => new
     {
@@ -178,6 +190,8 @@ public sealed record TurnResult(
         correctionsBefore = Turn.CorrectionsBefore,
         preference = Case.Preference,
         inputDetection = InputDetection.Describe(),
+        replyAskedFor = Decision?.Describe(),
+        replyReason = Decision?.Source.ToString(),
         glossary = Glossary,
         systemPromptChars = SystemPromptChars,
         reply = Reply,
@@ -187,4 +201,16 @@ public sealed record TurnResult(
         answerTokens = Metrics?.CompletionTokens,
         seconds = Math.Round(Elapsed.TotalSeconds, 1)
     };
+}
+
+/// <summary>Stands in for Ollama in --dry-run: every answer is the same short text.</summary>
+internal sealed class CannedAnswerHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"message\":{\"role\":\"assistant\",\"content\":\"(dry run)\"},\"done\":false}\n" +
+                "{\"message\":{\"role\":\"assistant\",\"content\":\"\"},\"done\":true}\n")
+        });
 }

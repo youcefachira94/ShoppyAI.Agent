@@ -82,6 +82,18 @@ public class LanguageDetectorTests
         Assert.True(detection.MixesFrench);
     }
 
+    [Theory]
+    [InlineData("salut, rani bloqué f une erreur, can you help?", DetectedLanguage.Darija)]
+    [InlineData("merci bezzaf, now how do I write unit tests for this ?", DetectedLanguage.English)]
+    [InlineData("what does 'wach' mean?", DetectedLanguage.English)]
+    [InlineData("que veut dire « bezzaf » ?", DetectedLanguage.French)]
+    [InlineData("c'est quoi l'erreur dans l'app ? je comprends pas", DetectedLanguage.French)]
+    [InlineData("l'app ta3i w l'code ma ykhdmouch", DetectedLanguage.Darija)]
+    public void Code_switched_messages_keep_their_main_language(string text, DetectedLanguage expected)
+    {
+        Assert.Equal(expected, Detect(text).Language);
+    }
+
     [Fact]
     public void Moroccan_words_are_reported_without_changing_the_language()
     {

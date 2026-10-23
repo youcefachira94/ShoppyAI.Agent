@@ -6,7 +6,7 @@ namespace ShoppyAI.DarijaEval;
 /// <summary>Markdown report: check counts per category, then every answer for human review.</summary>
 public static class Report
 {
-    private static readonly string[] Categories = ["darija-arabic", "arabizi", "mixed", "conversation", "ambiguous"];
+    private static readonly string[] Categories = ["darija-arabic", "arabizi", "mixed", "conversation", "ambiguous", "preferences"];
 
     public static string Build(IReadOnlyList<TurnResult> results, OllamaOptions options, bool dryRun, TimeSpan duration)
     {
@@ -61,12 +61,19 @@ public static class Report
                 foreach (var correction in turn.Turn.CorrectionsBefore ?? [])
                     report.AppendLine($"- Correction added before this turn: \"{correction.Term}\" = {correction.Meaning}");
 
+                if (turn.Turn.NewConversation)
+                    report.AppendLine("- New chat started before this turn (saved preferences kept).");
+
                 report.AppendLine($"**User:** {turn.Turn.User}");
                 report.AppendLine();
-                report.AppendLine($"Detected: {turn.InputDetection.Describe()} · glossary: {(turn.Glossary.Count == 0 ? "none" : string.Join(", ", turn.Glossary))} · system prompt {turn.SystemPromptChars} chars");
+                report.AppendLine($"Detected: {turn.InputDetection.Describe()} · reply asked: {turn.Decision?.Describe()} ({turn.Decision?.Source}) · glossary: {(turn.Glossary.Count == 0 ? "none" : string.Join(", ", turn.Glossary))} · system prompt {turn.SystemPromptChars} chars");
 
                 if (dryRun)
+                {
+                    foreach (var check in turn.Checks)
+                        report.AppendLine($"- {(check.Passed ? "pass" : "**FAIL**")} {check.Name}: {check.Detail}");
                     continue;
+                }
 
                 report.AppendLine();
                 report.AppendLine("**ShoppyAI:**");

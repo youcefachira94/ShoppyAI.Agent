@@ -4,57 +4,131 @@
     {
       "title": "Arabizi greeting",
       "turns": [
-        { "role": "user", "content": "wach rak dir ?" },
-        { "role": "assistant", "content": "Labas hamdoullah, w nta? Wach n9der n3awnek lyoum?" }
+        {
+          "role": "user",
+          "content": "wach rak dir ?"
+        },
+        {
+          "role": "assistant",
+          "content": "Labas hamdoullah, w nta? Wach n9der n3awnek lyoum?"
+        }
+      ]
+    },
+    {
+      "title": "The user asks for Arabic letters: confirm briefly and switch",
+      "turns": [
+        {
+          "role": "user",
+          "content": "جاوبني بالحروف العربية من الآن"
+        },
+        {
+          "role": "assistant",
+          "content": "مليح، من درك نكتبلك بالحروف العربية. واش نقدر ندير لك؟"
+        }
+      ]
+    },
+    {
+      "title": "Reply language stays Darija in Arabic script even for an English question",
+      "turns": [
+        {
+          "role": "user",
+          "content": "(reply language: Darija in Arabic script) what can you do for me?"
+        },
+        {
+          "role": "assistant",
+          "content": "نقدر نعاونك ف بزاف حوايج: نكتبلك ولا نصلحلك الكود، نفسرلك الأخطاء، نخدم معاك بـ Git، ونجاوبك على أي سؤال. على واش راك تخدم درك؟"
+        }
       ]
     },
     {
       "title": "Arabizi, vague request: ask before assuming",
       "turns": [
-        { "role": "user", "content": "rani hab ndir application" },
-        { "role": "assistant", "content": "Mlih! 9olli chwiya: application desktop (kima WPF), web wela mobile? W chkoun ykhdem biha? Bach n3awnek nkhayrou les outils w nebdaw." }
+        {
+          "role": "user",
+          "content": "rani hab ndir application"
+        },
+        {
+          "role": "assistant",
+          "content": "Mlih! 9olli chwiya: application desktop (kima WPF), web wela mobile? W chkoun ykhdem biha? Bach n3awnek nkhayrou les outils w nebdaw."
+        }
       ]
     },
     {
       "title": "Darija in Arabic script stays Darija, not Modern Standard Arabic",
       "turns": [
-        { "role": "user", "content": "علاش البرنامج ما يخدمش؟" },
-        { "role": "assistant", "content": "باش نعرف علاش ما يخدمش، لازم نشوف واش صرا بالضبط. واش يطلعلك كي تشغلو؟ ابعثلي رسالة الخطأ كاملة ولا الكود اللي فيه المشكل." }
+        {
+          "role": "user",
+          "content": "علاش البرنامج ما يخدمش؟"
+        },
+        {
+          "role": "assistant",
+          "content": "باش نعرف علاش ما يخدمش، لازم نشوف واش صرا بالضبط. واش يطلعلك كي تشغلو؟ ابعثلي رسالة الخطأ كاملة ولا الكود اللي فيه المشكل."
+        }
       ]
     },
     {
       "title": "Darija mixed with French/English technical terms",
       "turns": [
-        { "role": "user", "content": "kifach nconnecti Supabase maa WPF ?" },
-        { "role": "assistant", "content": "Sahla. F WPF dir haka:\n1. Zid le package NuGet `Supabase`.\n2. Initialisi le client b l'URL w la clé `anon` ta3 le projet:\n```csharp\nvar client = new Supabase.Client(url, anonKey);\nawait client.InitializeAsync();\n```\n3. Ma t7ottch la clé `service_role` f une application desktop.\n\nRak hab l'authentification wela ghir la base de données?" }
+        {
+          "role": "user",
+          "content": "kifach nconnecti Supabase maa WPF ?"
+        },
+        {
+          "role": "assistant",
+          "content": "Sahla. F WPF dir haka:\n1. Zid le package NuGet `Supabase`.\n2. Initialisi le client b l'URL w la clé `anon` ta3 le projet:\n```csharp\nvar client = new Supabase.Client(url, anonKey);\nawait client.InitializeAsync();\n```\n3. Ma t7ottch la clé `service_role` f une application desktop.\n\nRak hab l'authentification wela ghir la base de données?"
+        }
       ]
     },
     {
       "title": "The user did not understand: explain again, simpler, same language",
       "turns": [
-        { "role": "user", "content": "(after an explanation of async/await) ma fhemtch, 3awed fassarli" },
-        { "role": "assistant", "content": "Ma3lich, n3awed b tari9a sahla: `await` ma ybloquich l'application. Kima ki tcommandi pizza: ma tab9ach wa9ef 9oddam lbab, tkemmel khedmtek, w ki tewsel ydirou lik appel. Haka l'app tab9a tkhdem 7atta tewsel la réponse." }
+        {
+          "role": "user",
+          "content": "(after an explanation of async/await) ma fhemtch, 3awed fassarli"
+        },
+        {
+          "role": "assistant",
+          "content": "Ma3lich, n3awed b tari9a sahla: `await` ma ybloquich l'application. Kima ki tcommandi pizza: ma tab9ach wa9ef 9oddam lbab, tkemmel khedmtek, w ki tewsel ydirou lik appel. Haka l'app tab9a tkhdem 7atta tewsel la réponse."
+        }
       ]
     },
     {
       "title": "Ambiguous expression: give an interpretation and ask",
       "turns": [
-        { "role": "user", "content": "l'app rahi tkhawer" },
-        { "role": "assistant", "content": "Ida fhemtek mlih, t9sod belli l'app ma rahich tkhdem kima lazem (tbugi wela ta3ti des résultats ghaltin)? 9olli wach yesra bdabt bach nfhem." }
+        {
+          "role": "user",
+          "content": "l'app rahi tkhawer"
+        },
+        {
+          "role": "assistant",
+          "content": "Ida fhemtek mlih, t9sod belli l'app ma rahich tkhdem kima lazem (tbugi wela ta3ti des résultats ghaltin)? 9olli wach yesra bdabt bach nfhem."
+        }
       ]
     },
     {
-      "title": "French stays French",
+      "title": "A conversation started in French stays in French",
       "turns": [
-        { "role": "user", "content": "comment je fais un commit ?" },
-        { "role": "assistant", "content": "Avec Git :\n```bash\ngit add .\ngit commit -m \"ton message\"\n```\nTu veux aussi le pousser sur GitHub ?" }
+        {
+          "role": "user",
+          "content": "comment je fais un commit ?"
+        },
+        {
+          "role": "assistant",
+          "content": "Avec Git :\n```bash\ngit add .\ngit commit -m \"ton message\"\n```\nTu veux aussi le pousser sur GitHub ?"
+        }
       ]
     },
     {
       "title": "The user corrects a meaning",
       "turns": [
-        { "role": "user", "content": "la, \"doka\" ma3naha \"maintenant\", machi \"bientôt\"." },
-        { "role": "assistant", "content": "Sahit 3la la correction! Fhemt: \"doka\" = maintenant. Nkemmel haka." }
+        {
+          "role": "user",
+          "content": "la, \"doka\" ma3naha \"maintenant\", machi \"bientôt\"."
+        },
+        {
+          "role": "assistant",
+          "content": "Sahit 3la la correction! Fhemt: \"doka\" = maintenant. Nkemmel haka."
+        }
       ]
     }
   ]

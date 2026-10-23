@@ -7,8 +7,16 @@ namespace ShoppyAI.Core.Language;
 /// French and English. It only guides the reply language: the result is described to
 /// the model as a hint that may be wrong, never as a certainty.
 /// </summary>
-public sealed class LanguageDetector
+public sealed partial class LanguageDetector
 {
+    /// <summary>
+    /// A few quoted words are usually the word being discussed ("what does 'wach' mean?").
+    /// The apostrophe of "c'est" or "l'app" is not a quote: it touches a letter.
+    /// </summary>
+    [System.Text.RegularExpressions.GeneratedRegex(
+        @"(?<![\p{L}\p{N}])(?:""[^""\n]{1,30}""|«[^»\n]{1,30}»|“[^”\n]{1,30}”|['‘][^'’\n]{1,30}['’](?![\p{L}\p{N}]))")]
+    private static partial System.Text.RegularExpressions.Regex QuotedWords();
+
     private const string ArabiziDigits = "2356789";
 
     private static readonly string[] TechnicalPrefixes =
@@ -37,7 +45,7 @@ public sealed class LanguageDetector
         if (string.IsNullOrWhiteSpace(text))
             return LanguageDetection.Empty;
 
-        var tokens = TextNormalizer.Tokenize(TextNormalizer.StripCodeAndUrls(text));
+        var tokens = TextNormalizer.Tokenize(QuotedWords().Replace(TextNormalizer.StripCodeAndUrls(text), " "));
         var hints = new List<VarietyHint>();
 
         double darijaArabic = 0, darijaLatin = 0, standardArabic = 0, french = 0, english = 0;
@@ -130,6 +138,9 @@ public sealed class LanguageDetector
             WritingScript.Arabic when standardArabic > darija => DetectedLanguage.StandardArabic,
             WritingScript.Arabic => DetectedLanguage.ArabicUnspecified,
             WritingScript.Latin when darija > 0 && darija >= french && darija >= english => DetectedLanguage.Darija,
+            // Code-switched Algerian message ("rani bloqué f une erreur, can you help?"): a sentence built
+            // in Darija stays Darija unless the other language clearly dominates.
+            WritingScript.Latin when darija >= 1 && Math.Max(french, english) < 2 * darija + 1 => DetectedLanguage.Darija,
             WritingScript.Latin when french > 0 && french >= english => DetectedLanguage.French,
             WritingScript.Latin when english > 0 => DetectedLanguage.English,
             _ => DetectedLanguage.Unknown

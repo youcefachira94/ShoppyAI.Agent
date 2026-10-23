@@ -10,6 +10,7 @@ namespace ShoppyAI.Core.Chat;
 public sealed record PreparedRequest(
     IReadOnlyList<ChatMessage> Messages,
     LanguageDetection Detection,
+    ReplyDecision Reply,
     IReadOnlyList<GlossaryEntry> GlossaryMatches,
     int DroppedMessages)
 {
@@ -21,7 +22,9 @@ public sealed record ChatReply(string Content, PreparedRequest Request, OllamaMe
 /// <summary>
 /// One conversation with the model. The history only contains real user and assistant
 /// messages (no placeholders such as "Thinking..."), is kept in memory only, and a turn
-/// is recorded only once the answer is complete.
+/// is recorded only once the answer is complete. The reply language follows
+/// <see cref="ConversationLanguage"/>: explicit requests, then saved preferences, then the
+/// language of the conversation.
 /// </summary>
 public sealed class ChatSession
 {
@@ -30,7 +33,8 @@ public sealed class ChatSession
     private readonly OllamaChatClient _client;
     private readonly LanguageResources _resources;
     private readonly CorrectionStore _corrections;
-    private readonly Func<ResponseLanguage> _responseLanguage;
+    private readonly LanguagePreferences _preferences;
+    private readonly ConversationLanguage _language = new();
     private readonly LanguageDetector _detector;
     private readonly SystemPromptBuilder _promptBuilder;
     private readonly List<ChatMessage> _history = [];
@@ -41,22 +45,31 @@ public sealed class ChatSession
         OllamaChatClient client,
         LanguageResources resources,
         CorrectionStore corrections,
-        Func<ResponseLanguage> responseLanguage)
+        LanguagePreferences preferences)
     {
         _client = client;
         _resources = resources;
         _corrections = corrections;
-        _responseLanguage = responseLanguage;
+        _preferences = preferences;
         _detector = new LanguageDetector(resources.Markers);
         _promptBuilder = new SystemPromptBuilder(resources);
     }
 
     public IReadOnlyList<ChatMessage> History => _history.ToList();
 
-    /// <summary>Language of the conversation, used for short or unclear messages like "ok".</summary>
-    public LanguageDetection? LastRecognizedLanguage { get; private set; }
-
     public OllamaMetrics? LastMetrics { get; private set; }
+
+    /// <summary>Reply decision of the last completed turn (language, alphabet, and the request it contained).</summary>
+    public ReplyDecision? LastReply { get; private set; }
+
+    /// <summary>Reply preferences asked for in this conversation (not saved).</summary>
+    public ReplyPreference ConversationRequests => _language.Requested;
+
+    /// <summary>Set when a lasting preference asked for in a message could not be saved.</summary>
+    public string? PreferenceSaveError { get; private set; }
+
+    /// <summary>Raised when the requests of this conversation change.</summary>
+    public event EventHandler? LanguageChanged;
 
     public LanguageDetector Detector => _detector;
 
@@ -64,8 +77,21 @@ public sealed class ChatSession
     {
         _generation++;
         _history.Clear();
-        LastRecognizedLanguage = null;
+        _language.Reset();
         LastMetrics = null;
+        LastReply = null;
+        LanguageChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Forgets the reply-language requests made in this conversation, e.g. when the user
+    /// changes a saved preference that should apply now. With <paramref name="fields"/>,
+    /// only the fields it specifies are forgotten.
+    /// </summary>
+    public void ResetConversationRequests(ReplyPreference? fields = null)
+    {
+        _language.ResetRequests(fields);
+        LanguageChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public PreparedRequest Prepare(string userText)
@@ -80,10 +106,11 @@ public sealed class ChatSession
             .ToList();
         var glossary = _resources.Glossary.FindMatches(recentUserTexts);
         var corrections = PrioritizeCorrections(_corrections.Active, recentUserTexts);
-        var preference = _responseLanguage();
+        var reply = _language.Decide(detection, _resources.Instructions.Find(userText), _preferences.Saved);
+        var styleNotes = _preferences.StyleNotes;
 
         var systemPrompt = _promptBuilder.Build(
-            new PromptContext(detection, LastRecognizedLanguage, preference, glossary, corrections));
+            new PromptContext(detection, reply, glossary, corrections, styleNotes));
 
         var options = _client.Options;
         var budget = options.ContextLength - options.ReservedAnswerTokens -
@@ -93,14 +120,14 @@ public sealed class ChatSession
         if (dropped > 0)
         {
             systemPrompt = _promptBuilder.Build(
-                new PromptContext(detection, LastRecognizedLanguage, preference, glossary, corrections, dropped));
+                new PromptContext(detection, reply, glossary, corrections, styleNotes, dropped));
         }
 
         var messages = new List<ChatMessage>(kept.Count + 2) { ChatMessage.System(systemPrompt) };
         messages.AddRange(kept);
         messages.Add(ChatMessage.User(userText));
 
-        return new PreparedRequest(messages, detection, glossary, dropped);
+        return new PreparedRequest(messages, detection, reply, glossary, dropped);
     }
 
     /// <summary>Streams the answer. The turn is added to the history only if the answer completes.</summary>
@@ -127,7 +154,7 @@ public sealed class ChatSession
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            Commit(generation, userText, answer.ToString(), prepared.Detection, metrics);
+            Commit(generation, userText, answer.ToString(), prepared, metrics);
         }
         finally
         {
@@ -143,7 +170,7 @@ public sealed class ChatSession
             var generation = _generation;
             var prepared = Prepare(userText);
             var result = await _client.CompleteAsync(prepared.Messages, cancellationToken);
-            Commit(generation, userText, result.Content, prepared.Detection, result.Metrics);
+            Commit(generation, userText, result.Content, prepared, result.Metrics);
             return new ChatReply(result.Content.Trim(), prepared, result.Metrics);
         }
         finally
@@ -176,7 +203,7 @@ public sealed class ChatSession
             throw new InvalidOperationException("ShoppyAI is already answering a message.");
     }
 
-    private void Commit(int generation, string userText, string answer, LanguageDetection detection, OllamaMetrics? metrics)
+    private void Commit(int generation, string userText, string answer, PreparedRequest prepared, OllamaMetrics? metrics)
     {
         LastMetrics = metrics;
 
@@ -187,7 +214,25 @@ public sealed class ChatSession
         _history.Add(ChatMessage.User(userText));
         _history.Add(ChatMessage.Assistant(answer.Trim()));
 
-        if (detection.Language != DetectedLanguage.Unknown && (LastRecognizedLanguage is null || !detection.IsWeak))
-            LastRecognizedLanguage = detection;
+        var instruction = prepared.Reply.Instruction;
+        _language.Commit(prepared.Detection, instruction);
+        LastReply = prepared.Reply;
+        PreferenceSaveError = null;
+
+        if (instruction?.Scope == PreferenceScope.Persistent)
+        {
+            try
+            {
+                _preferences.Apply(instruction.Preference);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                // The answer already used the preference; only saving it for later failed.
+                PreferenceSaveError = error.Message;
+            }
+        }
+
+        if (instruction is not null)
+            LanguageChanged?.Invoke(this, EventArgs.Empty);
     }
 }

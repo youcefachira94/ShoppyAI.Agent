@@ -11,6 +11,36 @@ public sealed record CheckResult(string Name, bool Passed, string Detail);
 /// </summary>
 public static class EvalChecks
 {
+    /// <summary>
+    /// Checks the reply language ShoppyAI asked the model for. This part is deterministic
+    /// (no model involved), so it is also checked in --dry-run.
+    /// </summary>
+    public static List<CheckResult> Decision(EvalExpectation expect, ReplyDecision decision)
+    {
+        var checks = new List<CheckResult>();
+        if (expect.Length is { } expectedLength)
+        {
+            var actualLength = decision.Length.ToString().ToLowerInvariant();
+            checks.Add(new CheckResult("answer-length", actualLength == expectedLength, $"expected {expectedLength}, ShoppyAI asked for {actualLength}"));
+        }
+
+        if (expect.Reply is null)
+            return checks;
+
+        var actual = (decision.Language, decision.Script) switch
+        {
+            (ReplyLanguage.Darija, ReplyScript.Arabic) => "darija-ar",
+            (ReplyLanguage.Darija, _) => "darija-latin",
+            (ReplyLanguage.French, _) => "fr",
+            (ReplyLanguage.English, _) => "en",
+            (ReplyLanguage.StandardArabic, _) => "ar",
+            _ => "auto"
+        };
+
+        checks.Insert(0, new CheckResult("reply-language", actual == expect.Reply, $"expected {expect.Reply}, ShoppyAI asked for {actual} ({decision.Source})"));
+        return checks;
+    }
+
     public static List<CheckResult> Run(EvalExpectation expect, string reply, LanguageDetection replyDetection)
     {
         var checks = new List<CheckResult>();

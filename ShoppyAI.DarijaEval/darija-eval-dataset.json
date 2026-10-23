@@ -108,6 +108,59 @@
     { "id": "am-07", "category": "ambiguous", "note": "Moroccan forms (chno, daba): understand without correcting the user.", "turns": [ { "user": "chno ndir daba m3a had l'erreur ?", "expect": { "script": "latin", "language": "darija", "askClarification": true, "allowOtherVarieties": true } } ] },
     { "id": "am-08", "category": "ambiguous", "note": "Tunisian forms (tawa, kifech).", "turns": [ { "user": "tawa nheb n3ref kifech nesta3mel Git", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["git"], "allowOtherVarieties": true } } ] },
     { "id": "am-09", "category": "ambiguous", "note": "Idiom 'ydirli fiha' (it is playing tricks on me).", "turns": [ { "user": "kayen wa7ed l'bug rah ydirli fiha", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
-    { "id": "am-10", "category": "ambiguous", "note": "'t9il' = slow, heavy, or hard to read.", "turns": [ { "user": "3jebni l'code bessah rah t9il", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] }
+    { "id": "am-10", "category": "ambiguous", "note": "'t9il' = slow, heavy, or hard to read.", "turns": [ { "user": "3jebni l'code bessah rah t9il", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "pf-01", "category": "preferences", "note": "Required real case: Darija, then 'Arabic letters from now', then an English question still answered in Darija with Arabic letters.", "turns": [
+      { "user": "wach rak ?", "expect": { "reply": "darija-latin", "script": "latin", "language": "darija" } },
+      { "user": "جاوبني بالحروف العربية من الآن", "expect": { "reply": "darija-ar", "script": "arabic", "language": "darija" } },
+      { "user": "what can you do for me?", "expect": { "reply": "darija-ar", "script": "arabic", "language": "darija" } }
+    ] },
+    { "id": "pf-02", "category": "preferences", "note": "'From today answer me in Arabic' is kept for a new chat and for English or Arabizi messages.", "turns": [
+      { "user": "من اليوم جاوبني بالعربية", "expect": { "reply": "darija-ar", "script": "arabic" } },
+      { "newConversation": true, "user": "wach rak khoya", "expect": { "reply": "darija-ar", "script": "arabic", "language": "darija" } },
+      { "user": "how do I create a git branch?", "expect": { "reply": "darija-ar", "script": "arabic", "mentionsAny": ["git branch", "git checkout", "git switch"] } }
+    ] },
+    { "id": "pf-03", "category": "preferences", "note": "An explicit switch to French survives an English technical question.", "turns": [
+      { "user": "wach rak ?", "expect": { "reply": "darija-latin", "script": "latin" } },
+      { "user": "réponds en français", "expect": { "reply": "fr", "language": "french" } },
+      { "user": "how do I revert a commit?", "expect": { "reply": "fr", "language": "french", "mentionsAny": ["git revert"] } }
+    ] },
+    { "id": "pf-04", "category": "preferences", "note": "'Just this once in English' applies to one answer only.", "turns": [
+      { "user": "salam, kifach ndir branch f git ?", "expect": { "reply": "darija-latin", "script": "latin" } },
+      { "user": "juste cette fois en anglais : c'est quoi un rebase ?", "expect": { "reply": "en", "language": "english" } },
+      { "user": "w merge ?", "expect": { "reply": "darija-latin", "script": "latin" } }
+    ] },
+    { "id": "pf-05", "category": "preferences", "note": "Short messages do not change the language.", "turns": [
+      { "user": "rani nkhdem 3la projet WPF", "expect": { "reply": "darija-latin" } },
+      { "user": "oui", "expect": { "reply": "darija-latin" } },
+      { "user": "vasy", "expect": { "reply": "darija-latin" } },
+      { "user": "saha", "expect": { "reply": "darija-latin" } }
+    ] },
+    { "id": "pf-06", "category": "preferences", "note": "One French message keeps Darija; a second clear French message switches naturally.", "turns": [
+      { "user": "wach rak ?", "expect": { "reply": "darija-latin" } },
+      { "user": "Je voudrais comprendre comment fonctionne le binding en WPF.", "expect": { "reply": "darija-latin", "mentionsAny": ["binding", "Binding"] } },
+      { "user": "Pouvez-vous me donner un exemple avec une liste ?", "expect": { "reply": "fr", "language": "french" } }
+    ] },
+    { "id": "pf-07", "category": "preferences", "note": "A style correction (shorter) is applied and kept.", "turns": [
+      { "user": "fassarli wach howa Docker", "expect": { "reply": "darija-latin" } },
+      { "user": "trop long, plus court stp", "expect": { "reply": "darija-latin", "length": "short" } },
+      { "user": "w Kubernetes ?", "expect": { "reply": "darija-latin", "length": "short", "mentionsAny": ["Kubernetes"] } }
+    ] },
+    { "id": "pf-08", "category": "preferences", "note": "Saved French preference, then the user asks for Darija in this chat.", "preference": "fr", "turns": [
+      { "user": "wach rak, how are you ?", "expect": { "reply": "fr", "language": "french" } },
+      { "user": "jawbni b darija", "expect": { "reply": "darija-latin", "script": "latin" } },
+      { "user": "ok", "expect": { "reply": "darija-latin" } }
+    ] },
+    { "id": "pf-09", "category": "preferences", "note": "Back to automatic: 'reply in my language' follows the message at once.", "preference": "darija-ar", "turns": [
+      { "user": "hello, can you help me with Git?", "expect": { "reply": "darija-ar", "script": "arabic" } },
+      { "user": "réponds dans ma langue", "expect": { "reply": "fr", "language": "french" } },
+      { "user": "comment je crée une branche ?", "expect": { "reply": "fr", "language": "french" } }
+    ] },
+    { "id": "pf-10", "category": "preferences", "note": "Corrections of the language: not Darija but French; Arabizi instead of Arabic letters; Standard Arabic on request.", "turns": [
+      { "user": "salam", "expect": { "reply": "darija-latin" } },
+      { "user": "ne réponds pas en darija, en français stp", "expect": { "reply": "fr", "language": "french" } },
+      { "user": "w doka 3awed b darija", "expect": { "reply": "darija-latin", "script": "latin" } },
+      { "user": "la, b l3arbia machi b latin", "expect": { "reply": "darija-ar", "script": "arabic" } },
+      { "user": "جاوبني بالفصحى من فضلك", "expect": { "reply": "ar", "script": "arabic", "language": "msa" } }
+    ] }
   ]
 }

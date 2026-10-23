@@ -75,7 +75,7 @@ public class ReviewRegressionTests
     public void Enable_without_change_is_reported_and_not_undoable()
     {
         var store = new CorrectionStore(null);
-        var commands = new LanguageCommands(store, () => ResponseLanguage.Auto, _ => { });
+        var commands = new LanguageCommands(store, new LanguagePreferences(store: null));
         commands.TryExecute("/correct doka = maintenant");
 
         Assert.Contains("already enabled", commands.TryExecute("/enable doka"));
@@ -120,7 +120,7 @@ public class ReviewRegressionTests
         var blocker = Path.Combine(TestData.NewTempDirectory(), "language");
         File.WriteAllText(blocker, "a file where the folder should be");
         var store = new CorrectionStore(Path.Combine(blocker, "corrections.json"));
-        var commands = new LanguageCommands(store, () => ResponseLanguage.Auto, _ => { });
+        var commands = new LanguageCommands(store, new LanguagePreferences(store: null));
 
         Assert.ThrowsAny<IOException>(() => store.AddOrUpdate("doka", "maintenant"));
         Assert.Empty(store.All);
@@ -167,7 +167,7 @@ public class ReviewRegressionTests
 
         var handler = FakeOllamaHandler.Answering("ok");
         var session = new ChatSession(new OllamaChatClient(new HttpClient(handler), new OllamaOptions()),
-            TestData.Resources, store, () => ResponseLanguage.Auto);
+            TestData.Resources, store, new LanguagePreferences(store: null));
 
         await session.ReplyAsync("wach ma3na w2 w w44 ?");
 

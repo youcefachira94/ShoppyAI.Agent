@@ -1,17 +1,5 @@
 namespace ShoppyAI.Core.Language;
 
-/// <summary>Language the user asks ShoppyAI to answer in.</summary>
-public enum ResponseLanguage
-{
-    /// <summary>Mirror the language and script of the user's latest message.</summary>
-    Auto,
-    DarijaLatin,
-    DarijaArabic,
-    French,
-    English,
-    StandardArabic
-}
-
 public enum DetectedLanguage
 {
     Unknown,

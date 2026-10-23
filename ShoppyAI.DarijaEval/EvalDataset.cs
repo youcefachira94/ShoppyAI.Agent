@@ -29,18 +29,22 @@ public sealed class EvalCase
     public string Category { get; set; } = "";
     public string? Note { get; set; }
 
-    /// <summary>Reply language preference for the whole case (same values as the /lang command).</summary>
+    /// <summary>Saved reply preference at the start of the case (same values as the /lang command).</summary>
     public string? Preference { get; set; }
 
     public List<EvalTurn> Turns { get; set; } = [];
 
-    public ResponseLanguage ResponseLanguage =>
-        Preference is not null && ResponseLanguageNames.TryParse(Preference, out var language) ? language : ResponseLanguage.Auto;
+    public ReplyPreference SavedPreference =>
+        Preference is not null && ReplyPreferenceNames.TryParse(Preference, out var preference) ? preference : ReplyPreference.None;
 }
 
 public sealed class EvalTurn
 {
     public string User { get; set; } = "";
+
+    /// <summary>Start a new chat before this turn; saved preferences are kept, the conversation is not.</summary>
+    public bool NewConversation { get; set; }
+
     public List<EvalCorrection>? CorrectionsBefore { get; set; }
     public EvalExpectation Expect { get; set; } = new();
 }
@@ -54,6 +58,12 @@ public sealed class EvalCorrection
 
 public sealed class EvalExpectation
 {
+    /// <summary>Reply language ShoppyAI must ask the model for on this turn: "darija-ar", "darija-latin", "fr", "en", "ar" or null.</summary>
+    public string? Reply { get; set; }
+
+    /// <summary>Answer length ShoppyAI must ask for: "short", "detailed" or null.</summary>
+    public string? Length { get; set; }
+
     /// <summary>"arabic", "latin" or "any".</summary>
     public string Script { get; set; } = "any";
 

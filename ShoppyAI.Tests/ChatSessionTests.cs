@@ -9,12 +9,12 @@ namespace ShoppyAI.Tests;
 public class ChatSessionTests
 {
     private readonly CorrectionStore _corrections = new(null);
-    private ResponseLanguage _language = ResponseLanguage.Auto;
+    private readonly LanguagePreferences _preferences = new(store: null);
 
     private (ChatSession Session, FakeOllamaHandler Handler) Create(FakeOllamaHandler handler, OllamaOptions? options = null)
     {
         var client = new OllamaChatClient(new HttpClient(handler), options ?? new OllamaOptions());
-        return (new ChatSession(client, TestData.Resources, _corrections, () => _language), handler);
+        return (new ChatSession(client, TestData.Resources, _corrections, _preferences), handler);
     }
 
     private static async Task<string> Collect(IAsyncEnumerable<string> stream)
@@ -42,7 +42,7 @@ public class ChatSessionTests
         var messages = FakeOllamaHandler.Messages(body);
         Assert.Equal("system", messages[0].Role);
         Assert.StartsWith("You are ShoppyAI", messages[0].Content);
-        Assert.Contains("Reply language: Algerian Darija in Latin letters", messages[0].Content);
+        Assert.Contains("Reply language: Algerian Darija written in Latin letters", messages[0].Content);
         Assert.Equal(("user", "wach rak dir ?"), messages[^1]);
         Assert.Equal(2, messages.Count);
     }
@@ -152,7 +152,7 @@ public class ChatSessionTests
         await Collect(session.StreamReplyAsync("ok"));
 
         var system = FakeOllamaHandler.Messages(handler.Requests[1].Body)[0].Content;
-        Assert.Contains("Reply language: Algerian Darija in Latin letters", system);
+        Assert.Contains("Reply language: Algerian Darija written in Latin letters", system);
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class ChatSessionTests
         await Collect(session.StreamReplyAsync("w la base de données ?"));
 
         var system = FakeOllamaHandler.Messages(handler.Requests[1].Body)[0].Content;
-        Assert.Contains("Reply language: Algerian Darija in Latin letters", system);
-        Assert.Contains("the conversation so far is in: Darija", system);
+        Assert.Contains("Reply language: Algerian Darija written in Latin letters", system);
+        Assert.Contains("This is the language of the conversation", system);
     }
 
     [Fact]
@@ -177,14 +177,14 @@ public class ChatSessionTests
         await Collect(session.StreamReplyAsync("Peux-tu me répondre en français s'il te plaît ? Comment créer un fichier .gitignore ?"));
         await Collect(session.StreamReplyAsync("w doka 3awed b darija"));
 
-        Assert.Contains("Reply language: French, like the user", FakeOllamaHandler.Messages(handler.Requests[1].Body)[0].Content);
-        Assert.Contains("Reply language: Algerian Darija in Latin letters", FakeOllamaHandler.Messages(handler.Requests[2].Body)[0].Content);
+        Assert.Contains("Reply language: French. The user just asked for this", FakeOllamaHandler.Messages(handler.Requests[1].Body)[0].Content);
+        Assert.Contains("Reply language: Algerian Darija written in Latin letters", FakeOllamaHandler.Messages(handler.Requests[2].Body)[0].Content);
     }
 
     [Fact]
     public async Task Preference_and_corrections_reach_the_system_message()
     {
-        _language = ResponseLanguage.DarijaArabic;
+        _preferences.Apply(new ReplyPreference(ReplyLanguage.Darija, ReplyScript.Arabic));
         _corrections.AddOrUpdate("doka", "maintenant", "pas bientôt");
         _corrections.AddOrUpdate("bark", "seulement");
         _corrections.SetEnabled("bark", false);
@@ -279,9 +279,12 @@ public class SystemPromptBuilderTests
 {
     private static readonly SystemPromptBuilder Builder = new(TestData.Resources);
 
-    private static PromptContext Context(string text, ResponseLanguage preference = ResponseLanguage.Auto) =>
-        new(TestData.Detector.Detect(text), null, preference,
-            TestData.Resources.Glossary.FindMatches([text]), []);
+    private static PromptContext Context(string text, ReplyPreference? saved = null)
+    {
+        var detection = TestData.Detector.Detect(text);
+        var reply = new ConversationLanguage().Decide(detection, TestData.Resources.Instructions.Find(text), saved ?? ReplyPreference.None);
+        return new PromptContext(detection, reply, TestData.Resources.Glossary.FindMatches([text]), []);
+    }
 
     [Fact]
     public void Fixed_part_is_identical_on_every_turn()
@@ -296,22 +299,29 @@ public class SystemPromptBuilderTests
     }
 
     [Theory]
-    [InlineData("wach rak dir ?", "Algerian Darija in Latin letters")]
-    [InlineData("واش راك دير؟", "Algerian Darija in Arabic script")]
-    [InlineData("ماذا يجب أن أفعل؟", "Modern Standard Arabic, like the user")]
-    [InlineData("Bonjour, comment je peux faire ?", "French, like the user")]
-    [InlineData("How do I fix this?", "English, like the user")]
-    public void Auto_mirrors_the_user(string text, string expected)
+    [InlineData("wach rak dir ?", "Algerian Darija written in Latin letters")]
+    [InlineData("واش راك دير؟", "Algerian Darija written in Arabic script")]
+    [InlineData("ماذا يجب أن أفعل؟", "Modern Standard Arabic.")]
+    [InlineData("Bonjour, comment je peux faire ?", "French. Same language as the user.")]
+    [InlineData("How do I fix this?", "English. Same language as the user.")]
+    public void A_new_conversation_follows_the_user(string text, string expected)
     {
         Assert.Contains($"Reply language: {expected}", Builder.Build(Context(text)));
     }
 
     [Fact]
-    public void Preference_overrides_the_detection()
+    public void Saved_preference_overrides_the_detection()
     {
-        var prompt = Builder.Build(Context("wach rak dir ?", ResponseLanguage.French));
+        var prompt = Builder.Build(Context("wach rak dir ?", new ReplyPreference(ReplyLanguage.French)));
 
-        Assert.Contains("Reply language: French. The user chose this in the settings", prompt);
+        Assert.Contains("Reply language: French. This is the user's saved preference", prompt);
+    }
+
+    [Fact]
+    public void The_model_may_follow_a_request_the_parser_missed()
+    {
+        Assert.Contains("If the user's latest message clearly asks for another reply language or alphabet, follow their request instead.",
+            Builder.Build(Context("wach rak")));
     }
 
     [Fact]

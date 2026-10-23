@@ -7,8 +7,8 @@ public sealed record DialogueTurn(string Role, string Content);
 public sealed record DialogueExample(string Title, IReadOnlyList<DialogueTurn> Turns);
 
 /// <summary>
-/// The language profile data: base system prompt, glossary, dialogue examples and
-/// detector markers. Defaults are embedded files from Language/Data; a user glossary
+/// The language profile data: base system prompt, glossary, dialogue examples,
+/// detector markers and the words used to recognize reply-language requests. Defaults are embedded files from Language/Data; a user glossary
 /// placed in the data directory extends or overrides the default one.
 /// </summary>
 public sealed class LanguageResources
@@ -19,6 +19,7 @@ public sealed class LanguageResources
     public required DarijaGlossary Glossary { get; init; }
     public required IReadOnlyList<DialogueExample> Examples { get; init; }
     public required DialectMarkers Markers { get; init; }
+    public required LanguageInstructionParser Instructions { get; init; }
 
     /// <summary>Error raised while reading the user glossary, if any. The default glossary is used instead.</summary>
     public string? UserGlossaryError { get; init; }
@@ -50,6 +51,7 @@ public sealed class LanguageResources
             Glossary = glossary,
             Examples = ParseExamples(ReadEmbedded("dialogue-examples.json")),
             Markers = DialectMarkers.Parse(ReadEmbedded("dialect-markers.json")),
+            Instructions = LanguageInstructionParser.Parse(ReadEmbedded("reply-cues.json")),
             UserGlossaryError = userGlossaryError
         };
     }
