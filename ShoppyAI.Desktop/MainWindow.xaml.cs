@@ -1,21 +1,36 @@
-﻿using System.Windows;
+﻿
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace ShoppyAI.Desktop;
 
 public partial class MainWindow : Window
 {
+    private readonly HttpClient _httpClient = new()
+    {
+        BaseAddress = new Uri("http://localhost:11434/"),
+        Timeout = TimeSpan.FromMinutes(5)
+    };
+
+    private bool _isGenerating;
+
     public MainWindow()
     {
         InitializeComponent();
 
         AddMessage(
             "ShoppyAI",
-            "Hello. I am ready to inspect your project and work with Git.");
+            "Hello! Qwen2.5-Coder 14B is ready to help you.");
     }
 
-    private void Send_Click(object sender, RoutedEventArgs e)
+    private async void Send_Click(object sender, RoutedEventArgs e)
     {
+        if (_isGenerating)
+            return;
+
         var text = MessageBox.Text.Trim();
 
         if (string.IsNullOrWhiteSpace(text))
@@ -24,25 +39,70 @@ public partial class MainWindow : Window
         AddMessage("You", text);
         MessageBox.Clear();
 
-        AddMessage(
-            "ShoppyAI",
-            "Your message was received. The coding engine will be connected next.");
+        _isGenerating = true;
+
+        try
+        {
+            AddMessage("ShoppyAI", "Thinking...");
+
+            var request = new
+            {
+                model = "qwen2.5-coder:14b",
+                prompt = text,
+                stream = false
+            };
+
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/generate",
+                request
+            );
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content
+                .ReadFromJsonAsync<OllamaResponse>();
+
+            AddMessage(
+                "ShoppyAI",
+                result?.Response ?? "No response received."
+            );
+        }
+        catch (Exception ex)
+        {
+            AddMessage(
+                "ShoppyAI",
+                $"Ollama connection error: {ex.Message}"
+            );
+        }
+        finally
+        {
+            _isGenerating = false;
+        }
     }
 
     private void NewChat_Click(object sender, RoutedEventArgs e)
     {
+        if (_isGenerating)
+            return;
+
         MessagesPanel.Children.Clear();
         AddMessage("ShoppyAI", "New conversation started.");
     }
 
     private void ProjectFiles_Click(object sender, RoutedEventArgs e)
     {
-        AddMessage("ShoppyAI", "Project file scanning will be connected next.");
+        AddMessage(
+            "ShoppyAI",
+            "Project file scanning will be connected next."
+        );
     }
 
     private void GitStatus_Click(object sender, RoutedEventArgs e)
     {
-        AddMessage("ShoppyAI", "Git status will be connected next.");
+        AddMessage(
+            "ShoppyAI",
+            "Git status will be connected next."
+        );
     }
 
     private void AddMessage(string author, string message)
@@ -73,4 +133,14 @@ public partial class MainWindow : Window
 
         MessagesPanel.Children.Add(panel);
     }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _httpClient.Dispose();
+        base.OnClosed(e);
+    }
+
+    private sealed record OllamaResponse(
+        [property: JsonPropertyName("response")] string Response
+    );
 }
