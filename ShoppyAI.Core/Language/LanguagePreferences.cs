@@ -14,6 +14,9 @@ public sealed class LanguagePreferences
     private readonly SettingsStore? _store;
     private PreferenceSettings _memory = new();
 
+    /// <summary>A change could not be written: keep it in memory instead of re-reading the file.</summary>
+    private bool _unsaved;
+
     /// <param name="store">Settings file, or null to keep everything in memory (tests, evaluation).</param>
     public LanguagePreferences(SettingsStore? store)
     {
@@ -74,20 +77,25 @@ public sealed class LanguagePreferences
 
     public void ClearStyleNotes() => Change(p => p.StyleNotes.Clear());
 
-    /// <summary>Turns saving to disk on or off. Turning it off removes the saved preferences from the file.</summary>
+    /// <summary>
+    /// Turns saving to disk on or off. Turning it off removes the saved preferences from the file;
+    /// they stay in use until ShoppyAI is closed.
+    /// </summary>
+    /// <exception cref="IOException">The file could not be written; nothing was changed.</exception>
     public void SetRemember(bool remember)
     {
-        if (remember == Remember)
+        var current = Current;
+        if (remember == current.Remember)
             return;
 
-        _memory.Remember = remember;
-        if (_store is not null)
-        {
-            // When off, only the switch itself is written: the preferences stay in memory.
-            var written = remember ? Copy(_memory) : new PreferenceSettings { Remember = false };
-            _store.Update(s => s.Preferences = written);
-        }
+        var updated = Copy(current);
+        updated.Remember = remember;
 
+        // When off, only the switch itself is written.
+        _store?.Update(s => s.Preferences = remember ? Copy(updated) : new PreferenceSettings { Remember = false });
+
+        _memory = updated;
+        _unsaved = false;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -95,23 +103,48 @@ public sealed class LanguagePreferences
     {
         get
         {
-            if (_store is not null && _memory.Remember && _store.Settings.Preferences.Remember)
-                _memory = Copy(_store.Settings.Preferences);
+            if (_store is null || _unsaved)
+                return _memory;
+
+            // Follow the file, which another ShoppyAI process may have changed; "remember off"
+            // there means this process stops saving too.
+            var stored = _store.Settings.Preferences;
+            if (stored.Remember)
+                _memory = Copy(stored);
+            else
+                _memory.Remember = false;
 
             return _memory;
         }
     }
 
+    /// <summary>
+    /// Applies a change in memory, then saves it. If saving fails the change still applies until
+    /// ShoppyAI is closed, and the error is rethrown so the user can be told.
+    /// </summary>
     private void Change(Action<PreferenceSettings> change)
     {
         var updated = Copy(Current);
         change(updated);
-
-        if (_store is not null && updated.Remember)
-            _store.Update(s => s.Preferences = Copy(updated));
-
         _memory = updated;
-        Changed?.Invoke(this, EventArgs.Empty);
+
+        try
+        {
+            if (_store is not null && updated.Remember)
+            {
+                _store.Update(s => s.Preferences = Copy(updated));
+                _unsaved = false;
+            }
+        }
+        catch
+        {
+            _unsaved = true;
+            throw;
+        }
+        finally
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private static PreferenceSettings Copy(PreferenceSettings p) => new()

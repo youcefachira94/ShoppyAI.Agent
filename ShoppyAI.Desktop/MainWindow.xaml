@@ -64,7 +64,7 @@
                                 <Setter Property="Foreground" Value="#D1D5DB"/>
                                 <Setter Property="Margin" Value="0,3,14,3"/>
                                 <Setter Property="GroupName" Value="ReplyLanguage"/>
-                                <EventSetter Event="Checked" Handler="ReplyLanguage_Checked"/>
+                                <EventSetter Event="Click" Handler="ReplyLanguage_Click"/>
                             </Style>
                         </WrapPanel.Resources>
                         <RadioButton Content="Auto" Tag="Auto"/>
@@ -85,7 +85,7 @@
                                 <Setter Property="Foreground" Value="#D1D5DB"/>
                                 <Setter Property="Margin" Value="0,3,14,3"/>
                                 <Setter Property="GroupName" Value="ReplyScript"/>
-                                <EventSetter Event="Checked" Handler="ReplyScript_Checked"/>
+                                <EventSetter Event="Click" Handler="ReplyScript_Click"/>
                             </Style>
                         </WrapPanel.Resources>
                         <RadioButton Content="Auto" Tag="Auto"/>

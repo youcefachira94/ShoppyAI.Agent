@@ -45,18 +45,22 @@ public sealed class ShoppySettings
 /// <summary>
 /// Loads and saves settings.json. The file is re-read when another ShoppyAI process
 /// (console or desktop) changed it, so one does not overwrite the other's preferences.
+/// A file that cannot be read (being written, locked, or edited by hand with a mistake)
+/// is never overwritten: the current settings stay in use and reading is retried.
 /// </summary>
 public sealed class SettingsStore
 {
     private readonly string _filePath;
     private readonly Lock _gate = new();
-    private ShoppySettings _settings;
+    private ShoppySettings _settings = new();
     private DateTime _loadedWriteTime;
+    private string? _readError;
 
     public SettingsStore(string? filePath = null)
     {
         _filePath = filePath ?? ShoppyPaths.SettingsFile;
-        _settings = Load();
+        Refresh(force: true);
+        LoadError = _readError;
     }
 
     /// <summary>Current settings, re-read if the file changed since the last access.</summary>
@@ -66,14 +70,14 @@ public sealed class SettingsStore
         {
             lock (_gate)
             {
-                RefreshIfChanged();
+                Refresh();
                 return _settings;
             }
         }
     }
 
-    /// <summary>Set when settings.json could not be read; defaults are used instead.</summary>
-    public string? LoadError { get; private set; }
+    /// <summary>Set when settings.json could not be read at start; defaults are used instead.</summary>
+    public string? LoadError { get; }
 
     /// <summary>Ollama options to use: the saved ones, with SHOPPYAI_OLLAMA_URL / SHOPPYAI_MODEL applied.</summary>
     public OllamaOptions EffectiveOllamaOptions()
@@ -92,18 +96,21 @@ public sealed class SettingsStore
     }
 
     /// <summary>Applies a change to the latest settings and saves them. On a write error nothing is changed.</summary>
-    /// <exception cref="IOException">The file could not be written.</exception>
+    /// <exception cref="IOException">The file could not be read or written; it was left as it is.</exception>
     public void Update(Action<ShoppySettings> change)
     {
         lock (_gate)
         {
-            RefreshIfChanged();
+            Refresh();
+            if (_readError is not null)
+                throw new IOException($"settings.json could not be read, so it was not overwritten ({_readError}). Fix or delete the file.");
+
             var before = JsonSerializer.Serialize(_settings, JsonOptions);
             change(_settings);
 
             try
             {
-                Save();
+                Write();
             }
             catch
             {
@@ -113,46 +120,44 @@ public sealed class SettingsStore
         }
     }
 
-    public void Save()
+    private void Write()
     {
-        lock (_gate)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-            var temporary = _filePath + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(_settings, JsonOptions));
-            File.Move(temporary, _filePath, overwrite: true);
-            _loadedWriteTime = File.GetLastWriteTimeUtc(_filePath);
-        }
+        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+        var temporary = _filePath + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(_settings, JsonOptions));
+        File.Move(temporary, _filePath, overwrite: true);
+        _loadedWriteTime = File.GetLastWriteTimeUtc(_filePath);
     }
 
-    private void RefreshIfChanged()
+    /// <summary>Reads the file if it changed. On failure the current settings are kept and reading is retried later.</summary>
+    private void Refresh(bool force = false)
     {
-        if (LoadError is null && File.Exists(_filePath) && File.GetLastWriteTimeUtc(_filePath) != _loadedWriteTime)
-            _settings = Load();
-    }
-
-    private ShoppySettings Load()
-    {
-        var settings = new ShoppySettings();
-
-        if (File.Exists(_filePath))
+        if (!File.Exists(_filePath))
         {
-            try
-            {
-                _loadedWriteTime = File.GetLastWriteTimeUtc(_filePath);
-                settings = JsonSerializer.Deserialize<ShoppySettings>(File.ReadAllText(_filePath), JsonOptions) ?? settings;
-            }
-            catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
-            {
-                LoadError = error.Message;
-            }
+            _readError = null;
+            return;
         }
 
-        settings.Ollama ??= new OllamaOptions();
-        settings.Preferences ??= new PreferenceSettings();
-        settings.Preferences.StyleNotes ??= [];
-        MigrateVersion1(settings);
-        return settings;
+        var writeTime = File.GetLastWriteTimeUtc(_filePath);
+        if (!force && writeTime == _loadedWriteTime && _readError is null)
+            return;
+
+        try
+        {
+            var settings = JsonSerializer.Deserialize<ShoppySettings>(File.ReadAllText(_filePath), JsonOptions) ?? new ShoppySettings();
+            settings.Ollama ??= new OllamaOptions();
+            settings.Preferences ??= new PreferenceSettings();
+            settings.Preferences.StyleNotes ??= [];
+            MigrateVersion1(settings);
+
+            _settings = settings;
+            _loadedWriteTime = writeTime;
+            _readError = null;
+        }
+        catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
+        {
+            _readError = error.Message;
+        }
     }
 
     private static void MigrateVersion1(ShoppySettings settings)

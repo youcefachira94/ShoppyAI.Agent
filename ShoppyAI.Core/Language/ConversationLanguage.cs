@@ -15,6 +15,9 @@ public sealed class ConversationLanguage
     private const int MessagesToSwitch = 2;
 
     private ReplyLanguage? _established;
+
+    /// <summary>True while the language only comes from a short or unclear message ("hello", "bonjour").</summary>
+    private bool _establishedIsTentative;
     private ReplyLanguage? _switchCandidate;
     private int _switchVotes;
     private ReplyScript? _lastDarijaScript;
@@ -31,6 +34,7 @@ public sealed class ConversationLanguage
     public void Reset()
     {
         _established = null;
+        _establishedIsTentative = false;
         _switchCandidate = null;
         _switchVotes = 0;
         _lastDarijaScript = null;
@@ -50,7 +54,7 @@ public sealed class ConversationLanguage
 
         // A full reset also lets the next message set the language again.
         if (fields is null)
-            (_established, _switchCandidate, _switchVotes) = (null, null, 0);
+            (_established, _establishedIsTentative, _switchCandidate, _switchVotes) = (null, false, null, 0);
     }
 
     /// <summary>Computes the reply for one message without changing any state.</summary>
@@ -67,7 +71,7 @@ public sealed class ConversationLanguage
         else if (fromMessage.Language is ReplyLanguage.Auto)
             (language, source) = (Map(detection.Language) ?? _established ?? ReplyLanguage.Darija, ReplySource.ThisMessage);
         else if (turn.Language is ReplyLanguage.Auto || conversation.Language is ReplyLanguage.Auto)
-            (language, source) = FollowUser(detection);
+            (language, source) = FollowUser(detection, immediately: true);
         else if (conversation.Language is { } conversationLanguage)
             (language, source) = (conversationLanguage, fromMessage.Language is null ? ReplySource.Conversation : ReplySource.ThisMessage);
         else if (persistent.Language is { } savedLanguage and not ReplyLanguage.Auto)
@@ -137,7 +141,7 @@ public sealed class ConversationLanguage
 
         if (instruction is null)
         {
-            Follow(detection);
+            Follow(detection, immediately: Requested.Language is ReplyLanguage.Auto);
             return;
         }
 
@@ -153,7 +157,7 @@ public sealed class ConversationLanguage
         if (chosen is not null)
         {
             _established = chosen;
-            (_switchCandidate, _switchVotes) = (null, 0);
+            (_establishedIsTentative, _switchCandidate, _switchVotes) = (false, null, 0);
         }
 
         TrackDarijaScript(detection);
@@ -184,7 +188,11 @@ public sealed class ConversationLanguage
         return (turn, conversation, persistent);
     }
 
-    private (ReplyLanguage Language, ReplySource Source) FollowUser(LanguageDetection detection)
+    /// <param name="immediately">
+    /// The user asked to be answered in their language ("réponds dans ma langue"): a clear message
+    /// switches at once instead of after two messages.
+    /// </param>
+    private (ReplyLanguage Language, ReplySource Source) FollowUser(LanguageDetection detection, bool immediately = false)
     {
         var language = Map(detection.Language);
 
@@ -194,7 +202,7 @@ public sealed class ConversationLanguage
         if (detection.IsWeak || language is null || language == established)
             return (established, language == established ? ReplySource.UserMessage : ReplySource.ConversationLanguage);
 
-        return _switchCandidate == language && _switchVotes + 1 >= MessagesToSwitch
+        return immediately || _establishedIsTentative || _switchCandidate == language && _switchVotes + 1 >= MessagesToSwitch
             ? (language.Value, ReplySource.UserMessage)
             : (established, ReplySource.ConversationLanguage);
     }
@@ -213,7 +221,7 @@ public sealed class ConversationLanguage
             _lastDarijaScript = detection.Script == WritingScript.Arabic ? ReplyScript.Arabic : ReplyScript.Latin;
     }
 
-    private void Follow(LanguageDetection detection)
+    private void Follow(LanguageDetection detection, bool immediately)
     {
         TrackDarijaScript(detection);
         var language = Map(detection.Language);
@@ -224,23 +232,29 @@ public sealed class ConversationLanguage
         if (_established is null)
         {
             _established = language;
+            _establishedIsTentative = detection.IsWeak;
             return;
         }
 
         if (detection.IsWeak || language == _established)
         {
             if (language == _established)
+            {
+                _establishedIsTentative &= detection.IsWeak;
                 (_switchCandidate, _switchVotes) = (null, 0);
+            }
+
             return;
         }
 
         _switchVotes = _switchCandidate == language ? _switchVotes + 1 : 1;
         _switchCandidate = language;
 
-        if (_switchVotes >= MessagesToSwitch)
+        // A clear message replaces a tentative language at once ("hello", then a Darija question).
+        if (immediately || _establishedIsTentative || _switchVotes >= MessagesToSwitch)
         {
             _established = language;
-            (_switchCandidate, _switchVotes) = (null, 0);
+            (_establishedIsTentative, _switchCandidate, _switchVotes) = (false, null, 0);
         }
     }
 

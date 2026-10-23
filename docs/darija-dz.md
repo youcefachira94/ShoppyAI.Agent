@@ -57,7 +57,14 @@ Quelques précisions :
 - « بالعربية » / « en arabe » donne de la darija en lettres arabes ; l'arabe standard n'est utilisé que si l'utilisateur dit « الفصحى » ou « fusha ».
 - « بالحروف العربية » / « ekteb b arabizi » change l'alphabet, et la langue reste la darija.
 - « réponds dans ma langue » revient au mode Auto.
-- Une demande de traduction (« traduis… », « comment on dit… en anglais ») n'est pas une consigne de langue.
+- Une consigne doit s'adresser à l'assistant (« réponds… », « can you speak… », « jawbni… »).
+- Ne sont pas des consignes :
+  - les traductions (« traduis… », « comment on dit… en anglais ») ;
+  - les plaintes et descriptions (« pourquoi tu réponds toujours en anglais ? », « mon API répond en anglais ») ;
+  - l'apprentissage d'une langue (« apprendre l'anglais ») ;
+  - les phrases ordinaires (« clavier arabe ? », « path too long »).
+- Les négations excluent une langue (« ne réponds pas en anglais », « لا تجاوبني بالفرنسية », « machi b l'anglais ») pour la conversation.
+- Un premier message court (« hello », « bonjour ») ne fixe la langue que provisoirement : le premier message clair la remplace.
 - Si le parseur rate une demande, le modèle a pour consigne de suivre une demande explicite du dernier message.
 - Le code, les commandes et les identifiants gardent leur écriture d'origine.
 

@@ -235,7 +235,7 @@ static async Task AskOllama(ChatSession session, string question)
 
         Console.WriteLine();
 
-        if (session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent } instruction)
+        if (session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent, Preference.IsEmpty: false } instruction)
             Console.WriteLine($"(Saved reply preference: {ReplyPreferenceNames.Describe(instruction.Preference)}. Change it with /prefs.)");
         if (session.PreferenceSaveError is { } saveError)
             Console.WriteLine($"Warning: the preference was used but could not be saved ({saveError}).");

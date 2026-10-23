@@ -98,7 +98,7 @@ public partial class MainWindow : Window
             else
                 bubble.Content = MarkdownRenderer.Render(answer.ToString());
 
-            if (_session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent } instruction)
+            if (_session.LastReply?.Instruction is { Scope: PreferenceScope.Persistent, Preference.IsEmpty: false } instruction)
                 AddNote($"Saved reply preference: {ReplyPreferenceNames.Describe(instruction.Preference)}. You can change it in the sidebar.");
             if (_session.PreferenceSaveError is { } saveError)
                 AddNote($"The preference was used but could not be saved ({saveError}).");
@@ -144,13 +144,14 @@ public partial class MainWindow : Window
         AddMessage("ShoppyAI", "Git status will be connected next.");
     }
 
-    private void ReplyLanguage_Checked(object sender, RoutedEventArgs e)
+    // Click (not Checked): choosing the already selected option applies it again over this chat's requests.
+    private void ReplyLanguage_Click(object sender, RoutedEventArgs e)
     {
         if (!_showingPreferences && sender is RadioButton { Tag: string tag } && Enum.TryParse<ReplyLanguage>(tag, out var language))
             SavePreference(new ReplyPreference(Language: language));
     }
 
-    private void ReplyScript_Checked(object sender, RoutedEventArgs e)
+    private void ReplyScript_Click(object sender, RoutedEventArgs e)
     {
         if (!_showingPreferences && sender is RadioButton { Tag: string tag } && Enum.TryParse<ReplyScript>(tag, out var script))
             SavePreference(new ReplyPreference(Script: script));
@@ -158,15 +159,23 @@ public partial class MainWindow : Window
 
     private void RememberPreferences_Click(object sender, RoutedEventArgs e)
     {
-        RunPreferenceChange(() => _preferences.SetRemember(RememberPreferencesBox.IsChecked == true));
+        try
+        {
+            _preferences.SetRemember(RememberPreferencesBox.IsChecked == true);
+        }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException)
+        {
+            AddNote($"The setting could not be saved, nothing was changed ({error.Message}).");
+            ShowPreferences();
+        }
     }
 
     private void ResetPreferences_Click(object sender, RoutedEventArgs e)
     {
         RunPreferenceChange(() =>
         {
-            _preferences.Reset();
             _session.ResetConversationRequests();
+            _preferences.Reset();
             AddNote("Preferences reset: replies follow your language again.");
         });
     }
@@ -186,8 +195,8 @@ public partial class MainWindow : Window
     {
         RunPreferenceChange(() =>
         {
-            _preferences.Apply(preference);
             _session.ResetConversationRequests(preference);
+            _preferences.Apply(preference);
         });
     }
 
@@ -199,7 +208,7 @@ public partial class MainWindow : Window
         }
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException)
         {
-            AddNote($"The preference could not be saved ({error.Message}).");
+            AddNote($"Applied until ShoppyAI is closed, but it could not be saved ({error.Message}).");
             ShowPreferences();
         }
     }

@@ -206,6 +206,8 @@ public sealed class ChatSession
     private void Commit(int generation, string userText, string answer, PreparedRequest prepared, OllamaMetrics? metrics)
     {
         LastMetrics = metrics;
+        LastReply = null;
+        PreferenceSaveError = null;
 
         // A reset during the request starts a new conversation: the old answer must not leak into it.
         if (generation != _generation || string.IsNullOrWhiteSpace(answer))
@@ -217,7 +219,6 @@ public sealed class ChatSession
         var instruction = prepared.Reply.Instruction;
         _language.Commit(prepared.Detection, instruction);
         LastReply = prepared.Reply;
-        PreferenceSaveError = null;
 
         if (instruction?.Scope == PreferenceScope.Persistent)
         {

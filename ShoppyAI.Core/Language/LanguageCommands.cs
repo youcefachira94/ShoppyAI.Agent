@@ -108,6 +108,9 @@ public sealed class LanguageCommands
         var command = (space < 0 ? text : text[..space]).ToLowerInvariant();
         var argument = space < 0 ? "" : text[(space + 1)..].Trim();
 
+        var preferenceCommand = command is "/prefs" or "/preferences" or "/lang" or "/langue" or "/alphabet" or "/script"
+            or "/length" or "/longueur" or "/style" or "/remember" or "/memoriser";
+
         try
         {
             return command switch
@@ -128,6 +131,10 @@ public sealed class LanguageCommands
                 _ => null
             };
         }
+        catch (Exception error) when ((error is IOException or UnauthorizedAccessException) && preferenceCommand && command is not ("/remember" or "/memoriser"))
+        {
+            return $"Applied until ShoppyAI is closed, but it could not be saved ({error.Message}).";
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             return $"The change could not be saved, nothing was changed ({error.Message}).";
@@ -138,8 +145,8 @@ public sealed class LanguageCommands
     {
         if (argument.Equals("reset", StringComparison.OrdinalIgnoreCase))
         {
-            _preferences.Reset();
             _session?.ResetConversationRequests();
+            _preferences.Reset();
             return "Preferences reset: replies follow your language again.";
         }
 
@@ -164,8 +171,8 @@ public sealed class LanguageCommands
         if (!ReplyPreferenceNames.TryParse(argument, out var preference))
             return "Unknown language. Use: auto, darija, darija-ar, darija-latin, fr, en or ar.";
 
-        _preferences.Apply(preference);
         _session?.ResetConversationRequests(preference);
+        _preferences.Apply(preference);
         return $"Reply language saved: {ReplyPreferenceNames.Describe(preference)}.";
     }
 
@@ -182,8 +189,8 @@ public sealed class LanguageCommands
         if (script is null)
             return $"Alphabet for Darija: {ReplyPreferenceNames.Script(_preferences.Saved.Script)}. Use: /alphabet auto|arabic|latin";
 
-        _preferences.Apply(new ReplyPreference(Script: script));
         _session?.ResetConversationRequests(new ReplyPreference(Script: script));
+        _preferences.Apply(new ReplyPreference(Script: script));
         return $"Alphabet for Darija saved: {ReplyPreferenceNames.Script(script)}.";
     }
 
@@ -200,8 +207,8 @@ public sealed class LanguageCommands
         if (length is null)
             return $"Answer length: {ReplyPreferenceNames.Length(_preferences.Saved.Length)}. Use: /length auto|short|detailed";
 
-        _preferences.Apply(new ReplyPreference(Length: length));
         _session?.ResetConversationRequests(new ReplyPreference(Length: length));
+        _preferences.Apply(new ReplyPreference(Length: length));
         return $"Answer length saved: {ReplyPreferenceNames.Length(length)}.";
     }
 
