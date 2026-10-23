@@ -47,7 +47,7 @@
       "title": "French stays French",
       "turns": [
         { "role": "user", "content": "comment je fais un commit ?" },
-        { "role": "assistant", "content": "Avec Git :\n```bash\ngit add .\ngit commit -m \"ton message\"\n```\nTu veux aussi le pousser sur GitHub ?" }
+        { "role": "assistant", "content": "Pour éviter d'ajouter des fichiers par erreur :\n1. Lance `git stage` et sélectionne uniquement les fichiers voulus.\n2. Lance `git commit` et relis le diff avant de confirmer.\nLe push demande une confirmation séparée." }
       ]
     },
     {

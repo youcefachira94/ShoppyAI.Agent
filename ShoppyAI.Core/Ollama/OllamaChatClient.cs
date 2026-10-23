@@ -14,6 +14,9 @@ public sealed class OllamaOptions
 
     public string BaseUrl { get; set; } = DefaultBaseUrl;
 
+    /// <summary>Allows a remote HTTPS Ollama endpoint. Disabled by default.</summary>
+    public bool AllowRemoteEndpoint { get; set; }
+
     /// <summary>Model name as listed by <c>ollama list</c>. ShoppyAI never changes it by itself.</summary>
     public string Model { get; set; } = DefaultModel;
 
@@ -48,11 +51,13 @@ public sealed class OllamaException(string message, Exception? inner = null) : E
 public sealed class OllamaChatClient
 {
     private readonly HttpClient _http;
+    private readonly Uri _baseUri;
 
     public OllamaChatClient(HttpClient http, OllamaOptions options)
     {
         _http = http;
         Options = options;
+        _baseUri = ValidateBaseUrl(options.BaseUrl, options.AllowRemoteEndpoint);
     }
 
     public OllamaOptions Options { get; }
@@ -170,7 +175,26 @@ public sealed class OllamaChatClient
         return new OllamaChatChunk(content, metrics);
     }
 
-    private Uri Endpoint(string path) => new(new Uri(Options.BaseUrl.TrimEnd('/') + "/"), path.TrimStart('/'));
+    internal static Uri ValidateBaseUrl(string baseUrl, bool allowRemoteEndpoint)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrWhiteSpace(uri.Host) ||
+            uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0)
+        {
+            throw new ArgumentException("Ollama URL must be an absolute HTTP(S) URL without credentials, query, or fragment.", nameof(baseUrl));
+        }
+
+        if (uri.IsLoopback)
+            return new Uri(uri.AbsoluteUri.TrimEnd('/') + "/", UriKind.Absolute);
+
+        if (!allowRemoteEndpoint || uri.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("Remote Ollama endpoints require explicit opt-in and HTTPS.", nameof(baseUrl));
+
+        return new Uri(uri.AbsoluteUri.TrimEnd('/') + "/", UriKind.Absolute);
+    }
+
+    private Uri Endpoint(string path) => new(_baseUri, path.TrimStart('/'));
 
     private async Task<OllamaException> ErrorFromResponse(HttpResponseMessage response, CancellationToken cancellationToken)
     {

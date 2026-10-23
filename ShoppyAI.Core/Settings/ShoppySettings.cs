@@ -46,6 +46,7 @@ public sealed class SettingsStore
         return new OllamaOptions
         {
             BaseUrl = Environment.GetEnvironmentVariable("SHOPPYAI_OLLAMA_URL") is { Length: > 0 } url ? url : saved.BaseUrl,
+            AllowRemoteEndpoint = saved.AllowRemoteEndpoint,
             Model = Environment.GetEnvironmentVariable("SHOPPYAI_MODEL") is { Length: > 0 } model ? model : saved.Model,
             Temperature = saved.Temperature,
             ContextLength = saved.ContextLength,

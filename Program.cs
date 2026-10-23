@@ -1,9 +1,10 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 using ShoppyAI.Core.Chat;
+using ShoppyAI.Core.Git;
 using ShoppyAI.Core.Language;
 using ShoppyAI.Core.Ollama;
 using ShoppyAI.Core.Settings;
+using ShoppyAI.Core.Workspace;
 
 // Arabic needs Unicode in the console. On a Windows console, UTF-16 makes .NET use the
 // wide console API (ReadConsoleW/WriteConsoleW), which also keeps French accents working;
@@ -23,6 +24,9 @@ catch (IOException)
 }
 
 var settings = new SettingsStore();
+var workspace = new WorkspaceFileService(GetWorkspacePath(args));
+var git = new GitWorkspaceService(workspace.Root);
+var gitApproval = new ConsoleGitActionApproval();
 var corrections = new CorrectionStore(ShoppyPaths.CorrectionsFile);
 var languageResources = LanguageResources.Load(ShoppyPaths.LanguageDirectory);
 var session = new ChatSession(
@@ -44,6 +48,7 @@ var languageCommands = new LanguageCommands(corrections, () => settings.Settings
 });
 
 Console.WriteLine("ShoppyAI Agent");
+Console.WriteLine($"Workspace: {workspace.Root}");
 Console.WriteLine("Type 'help' for commands or 'exit' to quit.");
 
 foreach (var problem in new[] { settings.LoadError, corrections.LoadError, languageResources.UserGlossaryError })
@@ -78,15 +83,30 @@ while (true)
             break;
 
         case "git status":
-            RunCommand("git", "status");
+            await RunGitReadAsync(git.StatusAsync);
             break;
 
         case "git diff":
-            RunCommand("git", "diff");
+            await RunGitReadAsync(git.DiffAsync);
             break;
 
         case "git log":
-            RunCommand("git", "log", "--oneline", "-10");
+            await RunGitReadAsync(git.LogAsync);
+            break;
+
+        case "git stage":
+            Console.Write("File paths to stage (separate with ;): ");
+            var selectedPaths = (Console.ReadLine() ?? "")
+                .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            try
+            {
+                await git.StageFilesAsync(selectedPaths);
+                Console.WriteLine($"Staged {selectedPaths.Length} explicitly selected file(s).");
+            }
+            catch (Exception error)
+            {
+                Console.WriteLine($"Git staging refused: {error.Message}");
+            }
             break;
 
         case "git commit":
@@ -95,8 +115,15 @@ while (true)
 
             if (!string.IsNullOrWhiteSpace(message))
             {
-                RunCommand("git", "add", ".");
-                RunCommand("git", "commit", "-m", message);
+                try
+                {
+                    var committed = await git.CommitAsync(message, gitApproval);
+                    Console.WriteLine(committed ? "Commit created." : "Commit cancelled.");
+                }
+                catch (Exception error)
+                {
+                    Console.WriteLine($"Git commit refused: {error.Message}");
+                }
             }
             else
             {
@@ -106,12 +133,20 @@ while (true)
             break;
 
         case "git push":
-            RunCommand("git", "push");
+            try
+            {
+                var pushed = await git.PushAsync(gitApproval);
+                Console.WriteLine(pushed ? "Push completed." : "Push cancelled.");
+            }
+            catch (Exception error)
+            {
+                Console.WriteLine($"Git push refused: {error.Message}");
+            }
             break;
 
         case "scan":
         case "files":
-            ScanProject();
+            ScanProject(workspace);
             break;
 case "ask":
     Console.Write("Your question: ");
@@ -132,7 +167,16 @@ case "ask":
             if (input.StartsWith("read ", StringComparison.OrdinalIgnoreCase))
             {
                 var fileName = input[5..].Trim();
-                ReadProjectFile(fileName);
+                try
+                {
+                    Console.WriteLine($"\n--- {fileName} ---");
+                    Console.WriteLine(workspace.ReadText(fileName));
+                    Console.WriteLine("--- End ---");
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
+                {
+                    Console.WriteLine($"File read refused: {error.Message}");
+                }
             }
             else
             {
@@ -155,6 +199,7 @@ static void ShowHelp()
     Console.WriteLine("  git status");
     Console.WriteLine("  git diff");
     Console.WriteLine("  git log");
+    Console.WriteLine("  git stage     (explicit file paths separated by ;)");
     Console.WriteLine("  git commit");
     Console.WriteLine("  git push");
     Console.WriteLine("  exit");
@@ -164,75 +209,33 @@ static void ShowHelp()
         Console.WriteLine($"  {line}");
 }
 
-static void ScanProject()
+static string GetWorkspacePath(string[] arguments)
 {
-    var root = Directory.GetCurrentDirectory();
+    var index = Array.IndexOf(arguments, "--workspace");
+    if (index < 0)
+        return Directory.GetCurrentDirectory();
+    if (index + 1 >= arguments.Length || string.IsNullOrWhiteSpace(arguments[index + 1]))
+        throw new ArgumentException("Pass a directory after --workspace.");
+    return Path.GetFullPath(arguments[index + 1]);
+}
 
-    var files = Directory
-        .GetFiles(root, "*", SearchOption.AllDirectories)
-        .Where(file =>
-            !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
-                StringComparison.OrdinalIgnoreCase) &&
-            !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
-                StringComparison.OrdinalIgnoreCase) &&
-            !file.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}",
-                StringComparison.OrdinalIgnoreCase))
-        .ToList();
-
-    Console.WriteLine($"Project files found: {files.Count}");
-
+static void ScanProject(WorkspaceFileService workspace)
+{
+    var files = workspace.ListFiles();
+    Console.WriteLine($"Workspace files found: {files.Count}");
     foreach (var file in files)
-    {
-        Console.WriteLine(Path.GetRelativePath(root, file));
-    }
+        Console.WriteLine(file);
 }
 
-static void ReadProjectFile(string fileName)
-{
-    var fullPath = Path.GetFullPath(fileName);
-
-    if (!File.Exists(fullPath))
-    {
-        Console.WriteLine($"File not found: {fileName}");
-        return;
-    }
-
-    Console.WriteLine($"\n--- {fileName} ---");
-    Console.WriteLine(File.ReadAllText(fullPath));
-    Console.WriteLine("--- End ---");
-}
-
-static void RunCommand(string fileName, params string[] arguments)
+static async Task RunGitReadAsync(Func<CancellationToken, Task<string>> operation)
 {
     try
     {
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
-
-        foreach (var argument in arguments)
-        {
-            process.StartInfo.ArgumentList.Add(argument);
-        }
-
-        process.Start();
-
-        Console.WriteLine(process.StandardOutput.ReadToEnd());
-        Console.WriteLine(process.StandardError.ReadToEnd());
-
-        process.WaitForExit();
+        Console.WriteLine(await operation(CancellationToken.None));
     }
-        catch (Exception error)
+    catch (Exception error)
     {
-        Console.WriteLine($"Error: {error.Message}");
+        Console.WriteLine($"Git command failed: {error.Message}");
     }
 }
 
@@ -248,5 +251,25 @@ static async Task AskOllama(ChatSession session, string question)
     catch (Exception ex)
     {
         Console.WriteLine($"Ollama error: {ex.Message}");
+    }
+}
+
+sealed class ConsoleGitActionApproval : IGitActionApproval
+{
+    public Task<bool> ApproveCommitAsync(string branch, string message, string stagedDiff, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"Commit preview — branch: {branch}; message: {message}");
+        Console.WriteLine(stagedDiff);
+        Console.Write("Type 'yes' to create this commit: ");
+        return Task.FromResult(string.Equals(Console.ReadLine()?.Trim(), "yes", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public Task<bool> ApprovePushAsync(string remote, string destination, string branch, IReadOnlyList<string> commits, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"Push preview — remote: {remote}; destination: {destination}; branch: {branch}");
+        foreach (var commit in commits)
+            Console.WriteLine($"  {commit}");
+        Console.Write("Type 'yes' to push these commits: ");
+        return Task.FromResult(string.Equals(Console.ReadLine()?.Trim(), "yes", StringComparison.OrdinalIgnoreCase));
     }
 }
