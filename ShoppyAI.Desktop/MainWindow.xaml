@@ -51,6 +51,37 @@
                             Foreground="#D1D5DB"
                             BorderThickness="0"
                             HorizontalContentAlignment="Left"/>
+
+                    <TextBlock Text="REPLY LANGUAGE"
+                               Foreground="#94A3B8"
+                               FontSize="11"
+                               Margin="0,20,0,8"/>
+
+                    <StackPanel x:Name="ReplyLanguagePanel">
+                        <StackPanel.Resources>
+                            <Style TargetType="RadioButton">
+                                <Setter Property="Foreground" Value="#D1D5DB"/>
+                                <Setter Property="Margin" Value="0,3"/>
+                                <Setter Property="GroupName" Value="ReplyLanguage"/>
+                                <EventSetter Event="Checked" Handler="ReplyLanguage_Checked"/>
+                            </Style>
+                        </StackPanel.Resources>
+                        <RadioButton Content="Auto (same as you)" Tag="Auto"/>
+                        <RadioButton Content="Darija (Latin / Arabizi)" Tag="DarijaLatin"/>
+                        <RadioButton Content="Darija (العربية)" Tag="DarijaArabic"/>
+                        <RadioButton Content="Français" Tag="French"/>
+                        <RadioButton Content="English" Tag="English"/>
+                        <RadioButton Content="العربية الفصحى" Tag="StandardArabic"/>
+                    </StackPanel>
+
+                    <Button Content="Language corrections"
+                            Click="LanguageCorrections_Click"
+                            Height="38"
+                            Margin="0,8,0,0"
+                            Background="Transparent"
+                            Foreground="#D1D5DB"
+                            BorderThickness="0"
+                            HorizontalContentAlignment="Left"/>
                 </StackPanel>
 
                 <TextBlock DockPanel.Dock="Bottom"
@@ -66,6 +97,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBlock Text="New conversation"
@@ -74,30 +106,46 @@
                        FontWeight="SemiBold"
                        Margin="0,0,0,20"/>
 
-            <ScrollViewer Grid.Row="1"
+            <ScrollViewer x:Name="MessagesScroll"
+                          Grid.Row="1"
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="MessagesPanel"/>
             </ScrollViewer>
 
-            <Grid Grid.Row="2" Margin="0,20,0,0">
+            <!-- Shown only while waiting for the first words of an answer; never part of the conversation. -->
+            <TextBlock x:Name="TypingIndicator"
+                       Grid.Row="2"
+                       Text="ShoppyAI is writing…"
+                       Foreground="#94A3B8"
+                       FontStyle="Italic"
+                       FontSize="13"
+                       Margin="0,10,0,0"
+                       Visibility="Collapsed"/>
+
+            <Grid Grid.Row="3" Margin="0,20,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="100"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBox x:Name="MessageBox"
-                         Height="52"
+                         MinHeight="52"
+                         MaxHeight="160"
                          Padding="15"
                          FontSize="15"
                          Background="#1F2937"
                          Foreground="White"
                          BorderBrush="#374151"
                          TextWrapping="Wrap"
-                         AcceptsReturn="True"/>
+                         AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         TextChanged="MessageBox_TextChanged"/>
 
-                <Button Grid.Column="1"
+                <Button x:Name="SendButton"
+                        Grid.Column="1"
                         Content="Send"
                         Click="Send_Click"
+                        VerticalAlignment="Bottom"
                         Height="52"
                         Margin="12,0,0,0"
                         Background="#2563EB"

@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="ShoppyAI.Agent.csproj" />
   <Project Path="ShoppyAI.Desktop/ShoppyAI.Desktop.csproj" />
+  <Project Path="ShoppyAI.Core/ShoppyAI.Core.csproj" />
+  <Project Path="ShoppyAI.Tests/ShoppyAI.Tests.csproj" />
+  <Project Path="ShoppyAI.DarijaEval/ShoppyAI.DarijaEval.csproj" />
 </Solution>

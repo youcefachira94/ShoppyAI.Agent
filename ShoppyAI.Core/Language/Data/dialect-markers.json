@@ -1,0 +1,84 @@
+{
+  "description": "Marker words used by the language detector. Words are compared after normalization (lower case, no accents, no doubled letters, Arabic letter variants unified). Weak markers count half. Edit freely.",
+  "darija": {
+    "latin": [
+      "wach", "wech", "wesh", "ouach", "kifach", "kifech", "kifash", "3lach", "3lech", "alach",
+      "rani", "rak", "raki", "rah", "rahi", "raha", "rahom", "rahou", "rana", "rakom",
+      "doka", "dorka", "dork", "drk", "dok", "bezzaf", "bzaf", "bezaf", "chwiya", "chouiya", "chwia",
+      "mlih", "mli7", "mliha", "ma3lich", "ma3lech", "wela", "wella", "wla", "bach", "bech",
+      "kayen", "kayn", "makach", "makech", "mazal", "mazel", "bessah", "bsah", "sah", "sa7", "sahit", "sa7it",
+      "ya3tik", "nheb", "n7eb", "nhab", "n7ab", "hab", "7ab", "habit", "7abit",
+      "ndir", "tdir", "ydir", "dir", "dert", "ykhdem", "tekhdem", "tkhdem", "nkhdem", "khdem", "khedma", "ykhdemch",
+      "9oli", "9olli", "goulli", "goli", "9oul", "t9oul", "n9oul", "3awed", "n3awed", "fassarli", "fasserli",
+      "fhemt", "fhamt", "fhemtch", "fahemni", "fahamni", "nfhem", "nta", "nti", "ntouma", "hna",
+      "ghir", "berk", "bark", "barka", "baraka", "yak", "ya3ni", "yaani", "zaama", "za3ma", "walou", "walo",
+      "chkoun", "chkon", "wa9tach", "waqtach", "ch7al", "chhal", "mnin", "kifkif", "khouya", "kho", "sahbi", "sa7bi",
+      "inchallah", "nchallah", "hamdoullah", "hamdolah", "lbare7", "lbareh", "ghodwa", "lyoum", "lyom",
+      "m3a", "maa", "3la", "3andi", "3ndi", "3andek", "nta3", "ta3", "ntaa", "ta3i", "ta3ek", "ta3ha",
+      "labas", "mrigel", "mriguel", "kach", "kech", "hadi", "hada", "hadak", "hadik", "hadou", "lli", "elli",
+      "kima", "9bel", "mba3d", "ba3d", "n9der", "t9der", "y9der", "lazem", "ma3labalich", "rayah", "jay",
+      "khalli", "khalini", "zid", "nzid", "sayi", "nsayi", "tsayi", "sayit", "choufli", "chouf", "nchouf",
+      "sma3", "3tini", "a3tini", "ab3athli", "b3athli", "mouchkil", "mochkil", "sahla", "s3ib", "ghalet", "ghalta",
+      "temma", "7atta", "yezzi", "yezi", "bellati", "stenna", "fissa", "wah", "iyeh", "yaw",
+      "nconnecti", "tconnecti", "installit", "ninstalli", "tplanti", "tbloka", "tbloqa", "ybugi", "tbugi",
+      "ga3", "9a3", "balak", "wa9ila", "chghol", "makanch", "machi", "mechi", "3jebni", "nsit", "rou7",
+      "ida", "kan", "kanet", "fih", "fiha", "fihom", "3lih", "3liha", "bih", "biha", "jdid", "jdida", "yesra", "sra",
+      "lgit", "nalga", "smiti", "tari9a", "ncliki", "nfixi", "ntesti", "nlanci", "tlanci", "ncompili", "ndeployi", "npushi", "fakarni", "tnsahni", "salam", "slm"
+    ],
+    "weakLatin": ["w", "f", "b"],
+    "arabic": [
+      "واش", "كيفاش", "علاش", "راني", "راك", "راكي", "راه", "راهي", "راها", "راهم", "رانا", "راكم", "راهو",
+      "درك", "دركا", "دوكا", "ضرك", "بزاف", "شوية", "شويا", "مليح", "مليحة", "معليش", "باش", "كاين", "كاينة",
+      "ماكانش", "ماكاش", "مازال", "بصح", "صحيت", "يعطيك", "نحب", "حاب", "حابة", "حبيت", "ندير", "تدير", "يدير",
+      "دير", "درت", "يخدم", "تخدم", "نخدم", "خدمة", "قولي", "عاود", "فسرلي", "فهمت", "نفهم", "فهمني",
+      "برك", "بركا", "ياخي", "زعما", "والو", "شكون", "وقتاش", "شحال", "وين", "منين", "خويا", "صاحبي",
+      "تاع", "نتاع", "تاعي", "تاعك", "تاعو", "تاعها", "كاش", "هادي", "هادا", "هاداك", "هاديك", "هادو", "اللي",
+      "كيما", "مبعد", "نقدر", "تقدر", "يقدر", "بالاك", "صافي", "يزي", "ماشي", "واقيلا", "ساهل", "صعيب",
+      "غالط", "مشكل", "نتا", "نتي", "نتوما", "ثما", "قاع", "استنى", "زيد", "رايح", "جاي", "شوفلي",
+      "عطيني", "ابعثلي", "معلاباليش", "لاباس", "مريقل", "نورمال", "واه", "خاطر", "بلاك", "صرا", "يطلعلك"
+    ]
+  },
+  "moroccan": {
+    "latin": ["daba", "bghit", "bghiti", "bgha", "nbghi", "kanbghi", "dyal", "dyali", "dial", "chno", "achno", "chnou", "mzyan", "mezyan", "mzyana", "wakha", "3afak", "kandir", "kaydir", "katdir", "hadchi", "imta"],
+    "arabic": ["دابا", "بغيت", "بغيتي", "ديال", "ديالي", "شنو", "اشنو", "مزيان", "واخا", "عافاك", "هادشي", "كنبغي", "كندير", "امتى"]
+  },
+  "tunisian": {
+    "latin": ["tawa", "barcha", "barsha", "behi", "famma", "mafamech", "mafamach", "chnowa", "chniya", "9adech", "qaddech", "mte3", "mta3", "3aslema"],
+    "arabic": ["توا", "برشا", "برشة", "باهي", "فما", "مافماش", "شنوة", "شنية", "قداش", "متاع"]
+  },
+  "middleEastern": {
+    "latin": ["ezzay", "izzay", "3ayez", "3ayz", "keda", "kda", "delwa2ty", "dilwa2ti", "7elw", "shu", "lesh", "hek", "kteer", "ktir", "baddi", "halla2"],
+    "arabic": ["ازاي", "عايز", "كده", "دلوقتي", "ليش", "هيك", "كتير", "بدي", "هلق"]
+  },
+  "msa": {
+    "arabic": [
+      "ماذا", "لماذا", "هل", "اريد", "نريد", "تريد", "اود", "الذي", "التي", "الذين", "سوف", "ليس", "ليست", "لست",
+      "هذا", "هذه", "لكن", "يجب", "يمكن", "يمكنني", "يمكنك", "لقد", "عندما", "حيث", "ايضا", "جدا", "الان",
+      "اين", "متى", "كيفية", "بواسطة", "انني", "لان", "لم", "لن", "منذ", "فقط", "اعرف", "افهم", "اعمل"
+    ]
+  },
+  "french": {
+    "strong": [
+      "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "est", "suis", "sont", "ont", "ai", "et", "pas", "pour",
+      "avec", "dans", "sur", "mon", "mes", "ton", "tes", "ce", "cette", "ces", "ca", "comment", "pourquoi",
+      "quoi", "qui", "que", "quand", "faire", "fait", "fais", "peux", "peut", "veux", "veut", "dois", "doit",
+      "mais", "donc", "aussi", "tres", "bien", "merci", "bonjour", "svp", "stp", "besoin", "rien", "tout",
+      "plus", "encore", "voici", "voila", "parce", "quel", "quelle", "comme", "faut", "sais", "etre", "avoir", "marche", "fonctionne"
+    ],
+    "weak": ["le", "la", "les", "de", "des", "du", "un", "une", "au", "aux"]
+  },
+  "english": {
+    "strong": [
+      "i", "you", "is", "are", "the", "how", "what", "why", "do", "does", "can", "with", "to", "my", "it",
+      "this", "that", "please", "and", "not", "dont", "have", "want", "need", "should", "would", "could",
+      "where", "when", "which", "work", "works", "doesnt", "thanks", "hello", "help", "of", "in", "for"
+    ],
+    "weak": ["an"]
+  },
+  "arabiziExclusions": [
+    "mp3", "mp4", "h264", "h265", "x86", "x64", "utf8", "utf16", "base64", "sha256", "sha1", "md5", "ipv4", "ipv6",
+    "win10", "win11", "net8", "net9", "net10", "oauth2", "http2", "http3", "web3", "2fa", "3d", "4g", "5g", "4k", "8k",
+    "1er", "2eme", "3eme", "2e", "3e", "es6", "py3", "python3", "log4j", "k8s", "i18n", "l10n", "a11y", "p2p",
+    "b2b", "b2c", "v2", "v3", "s3", "ec2", "w3c", "g5", "a4", "x3"
+  ]
+}

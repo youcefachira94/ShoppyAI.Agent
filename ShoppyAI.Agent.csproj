@@ -10,6 +10,13 @@
 
   <ItemGroup>
     <Compile Remove="ShoppyAI.Desktop\**\*.cs" />
+    <Compile Remove="ShoppyAI.Core\**\*.cs" />
+    <Compile Remove="ShoppyAI.Tests\**\*.cs" />
+    <Compile Remove="ShoppyAI.DarijaEval\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="ShoppyAI.Core\ShoppyAI.Core.csproj" />
   </ItemGroup>
 
 </Project>

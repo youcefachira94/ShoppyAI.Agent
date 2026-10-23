@@ -1,5 +1,39 @@
-﻿using System.Net.Http.Json;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using System.Text;
+using ShoppyAI.Core.Chat;
+using ShoppyAI.Core.Language;
+using ShoppyAI.Core.Ollama;
+using ShoppyAI.Core.Settings;
+
+try
+{
+    Console.InputEncoding = Encoding.UTF8;
+    Console.OutputEncoding = Encoding.UTF8;
+}
+catch (IOException)
+{
+    // No console attached (redirected input/output): keep the defaults.
+}
+
+var settings = new SettingsStore();
+var corrections = new CorrectionStore(ShoppyPaths.CorrectionsFile);
+var session = new ChatSession(
+    new OllamaChatClient(OllamaChatClient.CreateHttpClient(), settings.EffectiveOllamaOptions()),
+    LanguageResources.Load(ShoppyPaths.LanguageDirectory),
+    corrections,
+    () => settings.Settings.ResponseLanguage);
+var languageCommands = new LanguageCommands(corrections, () => settings.Settings.ResponseLanguage, language =>
+{
+    settings.Settings.ResponseLanguage = language;
+    try
+    {
+        settings.Save();
+    }
+    catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+    {
+        Console.WriteLine($"Warning: the language choice could not be saved ({error.Message}).");
+    }
+});
 
 Console.WriteLine("ShoppyAI Agent");
 Console.WriteLine("Type 'help' for commands or 'exit' to quit.");
@@ -14,6 +48,12 @@ while (true)
 
     if (input.Equals("exit", StringComparison.OrdinalIgnoreCase))
         break;
+
+    if (languageCommands.TryExecute(input) is { } languageResult)
+    {
+        Console.WriteLine(languageResult);
+        continue;
+    }
 
     var command = input.ToLower();
 
@@ -64,9 +104,14 @@ case "ask":
     var question = Console.ReadLine();
 
     if (!string.IsNullOrWhiteSpace(question))
-        await AskOllama(question);
+        await AskOllama(session, question);
 
     break;
+
+        case "new":
+            session.Reset();
+            Console.WriteLine("New conversation started.");
+            break;
 
 
         default:
@@ -91,13 +136,18 @@ static void ShowHelp()
     Console.WriteLine("  scan");
     Console.WriteLine("  files");
     Console.WriteLine("  read <file>");
-    Console.WriteLine("  ask");
+    Console.WriteLine("  ask            (the conversation is remembered until 'new')");
+    Console.WriteLine("  new            start a new conversation");
     Console.WriteLine("  git status");
     Console.WriteLine("  git diff");
     Console.WriteLine("  git log");
     Console.WriteLine("  git commit");
     Console.WriteLine("  git push");
     Console.WriteLine("  exit");
+    Console.WriteLine();
+    Console.WriteLine("Language:");
+    foreach (var line in LanguageCommands.Help.Split('\n'))
+        Console.WriteLine($"  {line}");
 }
 
 static void ScanProject()
@@ -172,43 +222,17 @@ static void RunCommand(string fileName, params string[] arguments)
     }
 }
 
-static async Task AskOllama(string question)
+static async Task AskOllama(ChatSession session, string question)
 {
     try
     {
-        using var client = new HttpClient
-        {
-            Timeout = TimeSpan.FromMinutes(5)
-        };
+        await foreach (var delta in session.StreamReplyAsync(question))
+            Console.Write(delta);
 
-        var request = new
-        {
-            model = "qwen2.5-coder:14b",
-            prompt = question,
-            stream = false
-        };
-
-        using var response = await client.PostAsJsonAsync(
-            "http://localhost:11434/api/generate",
-            request
-        );
-
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<
-    OllamaResponse>();
-
-        Console.WriteLine(
-            result?.Response ?? "No response received."
-        );
+        Console.WriteLine();
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Ollama error: {ex.Message}");
     }
 }
-
-public record OllamaResponse(
-    [property: System.Text.Json.Serialization.JsonPropertyName("response")]
-    string Response
-);

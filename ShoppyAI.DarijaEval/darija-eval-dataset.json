@@ -1,0 +1,113 @@
+{
+  "description": "ShoppyAI Darija DZ evaluation set. Each turn is sent to the real model through ShoppyAI's ChatSession. 'expect' only drives automatic heuristic checks (script, language, clarification question, keywords); every answer must still be read by a person. Darija answers are automatically checked against Moroccan forms (daba, bghit, dyal, chno, mzyan) unless 'allowOtherVarieties' is true.",
+  "cases": [
+    { "id": "ar-01", "category": "darija-arabic", "turns": [ { "user": "واش راك دير؟ لاباس عليك؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-02", "category": "darija-arabic", "turns": [ { "user": "راني حاب ندير تطبيق باش نسير بيه الستوك تاع الحانوت", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-03", "category": "darija-arabic", "turns": [ { "user": "علاش البرنامج ما يخدمش كي نديرلو run؟", "expect": { "script": "arabic", "language": "darija", "askClarification": true } } ] },
+    { "id": "ar-04", "category": "darija-arabic", "turns": [ { "user": "قولي واش ندير درك، الـ build طاح", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-05", "category": "darija-arabic", "turns": [ { "user": "كيفاش نربط قاعدة البيانات مع التطبيق تاعي؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-06", "category": "darija-arabic", "note": "No previous answer exists: the model should ask what to explain again instead of inventing one.", "turns": [ { "user": "مافهمتش، عاود فسرلي بشوية", "expect": { "script": "arabic", "language": "darija", "askClarification": true } } ] },
+    { "id": "ar-07", "category": "darija-arabic", "turns": [ { "user": "شحال يدي وقت باش نتعلم C#؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-08", "category": "darija-arabic", "turns": [ { "user": "واش الفرق بين git pull و git fetch؟", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["fetch"] } } ] },
+    { "id": "ar-09", "category": "darija-arabic", "turns": [ { "user": "البيسي تاعي ثقيل بزاف كي نحل Visual Studio، واش ندير؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-10", "category": "darija-arabic", "turns": [ { "user": "نحب نخبي المفتاح تاع API باش ما يبانش في الكود", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-11", "category": "darija-arabic", "turns": [ { "user": "صحيت خويا، خدمت مليح", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-12", "category": "darija-arabic", "turns": [ { "user": "واش هي أحسن لغة باش نبدا بيها البرمجة؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-13", "category": "darija-arabic", "turns": [ { "user": "عندي erreur فيها NullReferenceException، واش معناها؟", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["null"] } } ] },
+    { "id": "ar-14", "category": "darija-arabic", "turns": [ { "user": "كاين حاجة ساهلة باش نسجل المعلومات في فيشي؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-15", "category": "darija-arabic", "turns": [ { "user": "ماعلاباليش منين نبدا، عاوني", "expect": { "script": "arabic", "language": "darija", "askClarification": true } } ] },
+    { "id": "ar-16", "category": "darija-arabic", "turns": [ { "user": "راهو يقولي access denied كي نحاول نpushi", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-17", "category": "darija-arabic", "turns": [ { "user": "شوفلي هاد الكود واش فيه غلطة: int x = \"5\";", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["int.Parse", "Parse", "string", "\"5\""] } } ] },
+    { "id": "ar-18", "category": "darija-arabic", "turns": [ { "user": "بالاك المشكل من الـ antivirus؟", "expect": { "script": "arabic", "language": "darija" } } ] },
+    { "id": "ar-19", "category": "darija-arabic", "turns": [ { "user": "واش نقدر نخدم ShoppyAI بلا انترنات؟", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["Ollama", "local", "محلي"] } } ] },
+    { "id": "ar-20", "category": "darija-arabic", "turns": [ { "user": "علاش WPF وماشي WinForms؟ واش الفرق؟", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["WinForms"] } } ] },
+
+    { "id": "az-01", "category": "arabizi", "turns": [ { "user": "wach rak dir ?", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-02", "category": "arabizi", "turns": [ { "user": "rani hab ndir application", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-03", "category": "arabizi", "note": "No context: the model should ask what does not work.", "turns": [ { "user": "3lach ma ykhdemch ?", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-04", "category": "arabizi", "note": "No context: the model should ask about the situation.", "turns": [ { "user": "9oli wach ndir doka", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-05", "category": "arabizi", "turns": [ { "user": "kifach nconnecti Supabase maa WPF ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["Supabase"] } } ] },
+    { "id": "az-06", "category": "arabizi", "note": "No previous answer exists: the model should ask what to explain again.", "turns": [ { "user": "ma fhemtch, 3awed fassarli", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-07", "category": "arabizi", "turns": [ { "user": "salam khouya, labas ? 3andi soal 3la Git", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-08", "category": "arabizi", "turns": [ { "user": "kifach ndir commit w push f GitHub ?", "expect": { "script": "latin", "language": "darija", "mentionsAll": ["git commit", "git push"] } } ] },
+    { "id": "az-09", "category": "arabizi", "turns": [ { "user": "rani nsayi ninstalli Ollama bessah ma bghach ykhdem", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-10", "category": "arabizi", "turns": [ { "user": "chhal ydi wa9t bach nt3alem C# ?", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-11", "category": "arabizi", "turns": [ { "user": "l'PC ta3i t9il bezzaf ki n7ell Visual Studio, wach ndir ?", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-12", "category": "arabizi", "turns": [ { "user": "nheb nkhabi la clé API bach ma tbanch f le code", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-13", "category": "arabizi", "turns": [ { "user": "sa7it khouya, khdemt mli7 !", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-14", "category": "arabizi", "turns": [ { "user": "wach howa a7sen langage bach nebda la programmation ?", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-15", "category": "arabizi", "turns": [ { "user": "3andi erreur NullReferenceException, wach ma3naha ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["null"] } } ] },
+    { "id": "az-16", "category": "arabizi", "turns": [ { "user": "kayen 7aja sahla bach nsajel les données f fichier ?", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-17", "category": "arabizi", "turns": [ { "user": "ma3labalich mnin nebda, 3awenni", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "az-18", "category": "arabizi", "turns": [ { "user": "rah y9olli access denied ki nsayi npushi", "expect": { "script": "latin", "language": "darija" } } ] },
+    { "id": "az-19", "category": "arabizi", "turns": [ { "user": "choufli had le code wach fih ghalta: int x = \"5\";", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["int.Parse", "Parse", "string", "\"5\""] } } ] },
+    { "id": "az-20", "category": "arabizi", "turns": [ { "user": "wa9tach lazem nesta3mel async w await ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["await"] } } ] },
+
+    { "id": "mx-01", "category": "mixed", "turns": [ { "user": "Salut, rani bloqué f une erreur de compilation, error CS0246, wach ndir ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["using", "package", "référence", "reference", "namespace"] } } ] },
+    { "id": "mx-02", "category": "mixed", "turns": [ { "user": "j'ai essayé dotnet build bessah ma ykhdemch, 9olli 3lach", "expect": { "script": "latin", "language": "any", "askClarification": true } } ] },
+    { "id": "mx-03", "category": "mixed", "turns": [ { "user": "please explain wach ma3na dependency injection f .NET", "expect": { "script": "latin", "language": "any", "mentionsAny": ["inject", "injection"] } } ] },
+    { "id": "mx-04", "category": "mixed", "turns": [ { "user": "c'est quoi la différence entre Task w Thread ? fassarli b exemple", "expect": { "script": "latin", "language": "any", "mentionsAll": ["Task", "Thread"] } } ] },
+    { "id": "mx-05", "category": "mixed", "turns": [ { "user": "I want to deploy l'app ta3i 3la Azure, kifach ?", "expect": { "script": "latin", "language": "any", "mentionsAny": ["Azure"] } } ] },
+    { "id": "mx-06", "category": "mixed", "turns": [ { "user": "rani nkhdem 3la un projet WPF, le binding ma ykhdemch m3a ObservableCollection", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["ObservableCollection", "INotifyPropertyChanged", "DataContext"] } } ] },
+    { "id": "mx-07", "category": "mixed", "turns": [ { "user": "bon, wach rayek f Entity Framework wela Dapper pour une petite app ?", "expect": { "script": "latin", "language": "any", "mentionsAll": ["Dapper"] } } ] },
+    { "id": "mx-08", "category": "mixed", "turns": [ { "user": "واش نقدر ندير deploy تاع l'app في Azure بلا ما نخلص؟", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["Azure"] } } ] },
+    { "id": "mx-09", "category": "mixed", "turns": [ { "user": "le code ta3i: `var list = new List<int>(); list[0] = 5;` 3lach y3ti exception ?", "expect": { "script": "latin", "language": "any", "mentionsAny": ["Add", "ArgumentOutOfRange", "index", "vide", "khawya"] } } ] },
+    { "id": "mx-10", "category": "mixed", "turns": [ { "user": "merci bezzaf, now how do I write unit tests for this ?", "expect": { "script": "latin", "language": "any", "mentionsAny": ["xUnit", "NUnit", "MSTest", "test"] } } ] },
+
+    { "id": "cv-01", "category": "conversation", "note": "Context retention across three turns.", "turns": [
+      { "user": "rani hab ndir application desktop l gestion ta3 stock", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "wach men langage tnsahni ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["C#", ".NET", "WPF", "Python", "Java"] } },
+      { "user": "w la base de données ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["SQLite", "SQL Server", "PostgreSQL", "MySQL", "Supabase", "SQL"] } }
+    ] },
+    { "id": "cv-02", "category": "conversation", "note": "'ma fhemtch' must re-explain the previous answer more simply.", "turns": [
+      { "user": "fassarli wach howa async/await f C#", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["await"] } },
+      { "user": "ma fhemtch, 3awed fassarli b tari9a sahla", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["await", "async"] } }
+    ] },
+    { "id": "cv-03", "category": "conversation", "note": "Correction stored before the conversation: 'doka' = now.", "turns": [
+      { "correctionsBefore": [ { "term": "doka", "meaning": "maintenant, tout de suite (pas « bientôt »)" } ],
+        "user": "lazem nkemmel le projet doka, mnin nebda ?", "expect": { "script": "latin", "language": "darija" } }
+    ] },
+    { "id": "cv-04", "category": "conversation", "note": "The user corrects a meaning inside the conversation and it must stick.", "turns": [
+      { "user": "rani m9ala9 m3a had le bug", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "la, m9ala9 ma3naha zaafan (énervé), machi khayef", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "bon, kifach nfixi le bug ? NullReferenceException f la ligne 42", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["null"] } }
+    ] },
+    { "id": "cv-05", "category": "conversation", "note": "The user switches language and back.", "turns": [
+      { "user": "wach rak ?", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "Peux-tu me répondre en français s'il te plaît ? Comment créer un fichier .gitignore ?", "expect": { "script": "latin", "language": "french", "mentionsAny": [".gitignore"] } },
+      { "user": "w doka 3awed b darija", "expect": { "script": "latin", "language": "darija" } }
+    ] },
+    { "id": "cv-06", "category": "conversation", "note": "Reply language preference forced to Darija in Arabic script while the user writes Arabizi.", "preference": "darija-ar", "turns": [
+      { "user": "kifach n3ayet l API men WPF ?", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["HttpClient"] } },
+      { "user": "w ida kan fih token ?", "expect": { "script": "arabic", "language": "darija", "mentionsAny": ["Authorization", "Bearer", "token"] } }
+    ] },
+    { "id": "cv-07", "category": "conversation", "note": "'fiha' refers to the table mentioned in the previous turn.", "turns": [
+      { "user": "3andi table users f Supabase", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "kifach nzid fiha colonne jdida ?", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["users", "ALTER TABLE", "alter table"] } }
+    ] },
+    { "id": "cv-08", "category": "conversation", "note": "A word taught through a user correction is then used.", "turns": [
+      { "correctionsBefore": [ { "term": "barbech", "meaning": "fouiller, chercher partout", "note": "barbecht = j'ai fouillé" } ],
+        "user": "barbecht f les logs w ma lgit walou", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["log"] } }
+    ] },
+    { "id": "cv-09", "category": "conversation", "note": "An ambiguous expression is clarified by the next turn.", "turns": [
+      { "user": "l'app rahi tkhawer", "expect": { "script": "latin", "language": "darija", "askClarification": true } },
+      { "user": "ya3ni ki ncliki 3la le bouton ma yesra walou", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["Click", "event", "événement", "handler", "Command", "binding"] } }
+    ] },
+    { "id": "cv-10", "category": "conversation", "note": "Facts given in the first turn must be recalled.", "turns": [
+      { "user": "smiti Karim w rani nkhdem 3la ShoppyAI b .NET 10", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "nheb nzid feature jdida l chat", "expect": { "script": "latin", "language": "darija" } },
+      { "user": "fakarni, wach smiti w b wach rani nkhdem ?", "expect": { "script": "latin", "language": "darija", "mentionsAll": ["Karim", ".NET"] } }
+    ] },
+
+    { "id": "am-01", "category": "ambiguous", "note": "'tkhawer': messing around / talking nonsense; for an app the meaning is unclear.", "turns": [ { "user": "rahi tkhawer", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-02", "category": "ambiguous", "note": "'wella' = 'or' or 'became': the sentence is incomplete.", "turns": [ { "user": "l'app wella", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-03", "category": "ambiguous", "note": "Refers to something never said: must not invent it.", "turns": [ { "user": "dir li 9otlek", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-04", "category": "ambiguous", "note": "'balak' = maybe, or 'watch out'.", "turns": [ { "user": "balak!", "expect": { "script": "latin", "language": "any", "askClarification": true } } ] },
+    { "id": "am-05", "category": "ambiguous", "note": "'m9ala9': upset/annoyed in Algeria, worried in Standard Arabic.", "turns": [ { "user": "rani m9ala9", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-06", "category": "ambiguous", "note": "'zaama' can express doubt or introduce a rephrasing.", "turns": [ { "user": "zaama ykhdem ?", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-07", "category": "ambiguous", "note": "Moroccan forms (chno, daba): understand without correcting the user.", "turns": [ { "user": "chno ndir daba m3a had l'erreur ?", "expect": { "script": "latin", "language": "darija", "askClarification": true, "allowOtherVarieties": true } } ] },
+    { "id": "am-08", "category": "ambiguous", "note": "Tunisian forms (tawa, kifech).", "turns": [ { "user": "tawa nheb n3ref kifech nesta3mel Git", "expect": { "script": "latin", "language": "darija", "mentionsAny": ["git"], "allowOtherVarieties": true } } ] },
+    { "id": "am-09", "category": "ambiguous", "note": "Idiom 'ydirli fiha' (it is playing tricks on me).", "turns": [ { "user": "kayen wa7ed l'bug rah ydirli fiha", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] },
+    { "id": "am-10", "category": "ambiguous", "note": "'t9il' = slow, heavy, or hard to read.", "turns": [ { "user": "3jebni l'code bessah rah t9il", "expect": { "script": "latin", "language": "darija", "askClarification": true } } ] }
+  ]
+}
